@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"math/rand/v2"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -81,41 +82,85 @@ func (*Game) Start(ctx context.Context, tx pgx.Tx, roomID string, players []stri
 	return err
 }
 
-func (*Game) Act(ctx context.Context, tx pgx.Tx, roomID, userID string, raw json.RawMessage, now time.Time) error {
+func (g *Game) Act(ctx context.Context, tx pgx.Tx, roomID, userID string, raw json.RawMessage, now time.Time) error {
 	var a Action
 	if err := json.Unmarshal(raw, &a); err != nil {
 		return ruleErr("Ação inválida.")
 	}
-	var id string
-	var version int
+	m, err := load(ctx, tx, roomID)
+	if err != nil {
+		return err
+	}
+	if err := Apply(&m.state, userID, a, now); err != nil {
+		return err
+	}
+	return m.save(ctx, tx, userID, a)
+}
+
+// BotStep lets one bot that has something to do act. Bots are tried in random order.
+func (g *Game) BotStep(ctx context.Context, tx pgx.Tx, roomID string, bots []string, now time.Time) (bool, error) {
+	m, err := load(ctx, tx, roomID)
+	if errors.Is(err, errNoMatch) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	rng := rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))
+	order := slices.Clone(bots)
+	rng.Shuffle(len(order), func(i, j int) { order[i], order[j] = order[j], order[i] })
+	for _, bot := range order {
+		a := BotAction(&m.state, bot, rng)
+		if a == nil {
+			continue
+		}
+		if err := Apply(&m.state, bot, *a, now); err != nil {
+			return false, fmt.Errorf("bot %s %s: %w", bot, a.Type, err)
+		}
+		return true, m.save(ctx, tx, bot, *a)
+	}
+	return false, nil
+}
+
+var errNoMatch = ruleErr("Não há partida nessa sala.")
+
+// match is the room's current match, locked for the rest of the transaction.
+type match struct {
+	id      string
+	version int
+	state   State
+}
+
+func load(ctx context.Context, tx pgx.Tx, roomID string) (*match, error) {
+	var m match
 	var state []byte
 	err := tx.QueryRow(ctx, `SELECT id, version, state FROM backdoor.matches WHERE room_id = $1 AND closed_at IS NULL FOR UPDATE`, roomID).
-		Scan(&id, &version, &state)
+		Scan(&m.id, &m.version, &state)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ruleErr("Não há partida nessa sala.")
+		return nil, errNoMatch
 	} else if err != nil {
-		return err
+		return nil, err
 	}
-	var s State
-	if err := json.Unmarshal(state, &s); err != nil {
-		return fmt.Errorf("decode match %s: %w", id, err)
+	if err := json.Unmarshal(state, &m.state); err != nil {
+		return nil, fmt.Errorf("decode match %s: %w", m.id, err)
 	}
-	if err := Apply(&s, userID, a, now); err != nil {
-		return err
-	}
-	next, err := json.Marshal(&s)
+	return &m, nil
+}
+
+// save stores the new state and logs the action that produced it.
+func (m *match) save(ctx context.Context, tx pgx.Tx, userID string, a Action) error {
+	next, err := json.Marshal(&m.state)
 	if err != nil {
 		return err
 	}
 	var winner *string
-	if s.Winner != "" {
-		winner = &s.Winner
+	if m.state.Winner != "" {
+		winner = &m.state.Winner
 	}
-	if _, err := tx.Exec(ctx, `UPDATE backdoor.matches SET state = $2, version = version + 1, winner = $3, updated_at = now() WHERE id = $1`, id, next, winner); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE backdoor.matches SET state = $2, version = version + 1, winner = $3, updated_at = now() WHERE id = $1`, m.id, next, winner); err != nil {
 		return err
 	}
 	action, _ := json.Marshal(a)
-	_, err = tx.Exec(ctx, `INSERT INTO backdoor.actions (match_id, seq, user_id, action) VALUES ($1, $2, $3, $4)`, id, version+1, userID, action)
+	_, err = tx.Exec(ctx, `INSERT INTO backdoor.actions (match_id, seq, user_id, action) VALUES ($1, $2, $3, $4)`, m.id, m.version+1, userID, action)
 	return err
 }
 

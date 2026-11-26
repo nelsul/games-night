@@ -35,6 +35,33 @@
 	const specialsBlocked = $derived(
 		!!room && (room.options?.zero_day === true || room.options?.freelancer === true) && room.players.length < 7
 	);
+	let botsBusy = $state(false);
+	let botsError = $state('');
+
+	async function addBots(count: number) {
+		botsError = '';
+		botsBusy = true;
+		try {
+			room = await api.post<Room>(`/rooms/${code}/bots`, { count });
+		} catch (err) {
+			botsError = err instanceof ApiError ? err.message : 'Algo deu errado.';
+		} finally {
+			botsBusy = false;
+		}
+	}
+
+	async function removeBots(id?: string) {
+		botsError = '';
+		botsBusy = true;
+		try {
+			room = await api.del<Room>(`/rooms/${code}/bots${id ? `?id=${id}` : ''}`);
+		} catch (err) {
+			botsError = err instanceof ApiError ? err.message : 'Algo deu errado.';
+		} finally {
+			botsBusy = false;
+		}
+	}
+
 	let starting = $state(false);
 	let startError = $state('');
 
@@ -200,6 +227,12 @@
 					<span class="tile">
 						<Avatar user={p} size={96} radius={6} />
 						{#if p.is_host}<span class="host">HOST</span>{/if}
+						{#if p.is_bot}<span class="host bot">BOT</span>{/if}
+						{#if p.is_bot && isHost && room.status === 'lobby'}
+							<button class="remove" onclick={() => removeBots(p.id)} aria-label="Tirar {p.name} da sala"
+								><Icon name="close" size={14} /></button
+							>
+						{/if}
 					</span>
 					<span class="name" class:me={p.id === me}>{p.id === me ? 'você' : p.name}</span>
 					{#if !p.online}<span class="sr-only">(fora do app)</span>{/if}
@@ -214,6 +247,27 @@
 				</li>
 			{/if}
 		</ul>
+
+		{#if isHost && room.status === 'lobby'}
+			<section class="bots" aria-labelledby="bots-title">
+				<div class="bots-text">
+					<h2 id="bots-title">Bots</h2>
+					<p class="muted">Completam a mesa e jogam sozinhos, com uma estratégia simples.</p>
+				</div>
+				<div class="bots-actions">
+					{#if missing > 0}
+						<button class="btn btn-primary" onclick={() => addBots(missing)} disabled={botsBusy}>
+							Completar com {missing} {missing === 1 ? 'bot' : 'bots'}
+						</button>
+					{/if}
+					<button class="btn btn-ghost" onclick={() => addBots(1)} disabled={botsBusy || full}>+ 1 bot</button>
+					{#if room.players.some((p) => p.is_bot)}
+						<button class="btn btn-ghost" onclick={() => removeBots()} disabled={botsBusy}>Tirar bots</button>
+					{/if}
+				</div>
+				{#if botsError}<p class="error" role="alert">{botsError}</p>{/if}
+			</section>
+		{/if}
 
 		<LobbyOptions {room} {isHost} onchange={(r) => (room = r)} />
 
@@ -431,6 +485,53 @@
 		align-items: center;
 		gap: 8px;
 		min-width: 0;
+	}
+	.host.bot {
+		background: #2f80ed;
+		right: auto;
+		left: -8px;
+	}
+	.remove {
+		position: absolute;
+		bottom: -8px;
+		right: -8px;
+		width: 30px;
+		height: 30px;
+		border-radius: 50%;
+		border: 2px solid var(--bg);
+		background: #fff;
+		color: #141414;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+	}
+	.bots {
+		background: var(--surface);
+		border-radius: var(--radius);
+		padding: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+	.bots h2 {
+		margin: 0;
+		font-size: 18px;
+	}
+	.bots p {
+		margin: 2px 0 0;
+		font-size: 13px;
+		line-height: 1.4;
+	}
+	.bots-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	.bots-actions .btn {
+		height: 42px;
+		font-size: 14px;
+		padding: 0 14px;
 	}
 	.offline .tile {
 		opacity: 0.45;

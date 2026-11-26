@@ -85,6 +85,7 @@ type App struct {
 	store *Storage // nil when S3 is not configured: profile photos are then disabled
 	mail  *Mailer
 	hub   *Hub
+	bots  *botRunner
 	log   *slog.Logger
 }
 
@@ -132,7 +133,7 @@ func run(log *slog.Logger) error {
 		log.Warn("S3 is not configured: profile photos are disabled")
 	}
 
-	app := &App{cfg: cfg, db: db, store: store, mail: NewMailer(cfg, log), hub: NewHub(), log: log}
+	app := &App{cfg: cfg, db: db, store: store, mail: NewMailer(cfg, log), hub: NewHub(), bots: newBotRunner(), log: log}
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           app.routes(),
@@ -252,6 +253,8 @@ func (a *App) routes() http.Handler {
 			r.Post("/rooms/{code}/start", a.handleStartMatch)
 			r.Post("/rooms/{code}/action", a.handleMatchAction)
 			r.Post("/rooms/{code}/stop", a.handleStopMatch)
+			r.Post("/rooms/{code}/bots", a.handleAddBots)
+			r.Delete("/rooms/{code}/bots", a.handleRemoveBots)
 			r.Get("/rooms/{code}/messages", a.handleListMessages)
 			r.Post("/rooms/{code}/messages", a.handleSendMessage)
 		})

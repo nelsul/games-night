@@ -44,6 +44,13 @@ type Engine interface {
 	Stop(ctx context.Context, tx pgx.Tx, roomID string) error
 }
 
+// BotPlayer is implemented by games whose matches bots can play. BotStep applies at
+// most one action by one of the given bots and reports whether a bot acted; the hub
+// calls it again (with a pause, so people can follow) until no bot has anything to do.
+type BotPlayer interface {
+	BotStep(ctx context.Context, tx pgx.Tx, roomID string, bots []string, now time.Time) (bool, error)
+}
+
 // UserError is an error whose message is meant for players (in Portuguese).
 type UserError interface {
 	error
