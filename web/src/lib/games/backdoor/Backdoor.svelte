@@ -9,7 +9,15 @@
 	import Badge from './Badge.svelte';
 	import { roleInfo, type MatchView } from './types';
 
-	let { room, match, me, isHost, onroom }: { room: Room; match: MatchView; me: string; isHost: boolean; onroom: (r: Room) => void } =
+	let {
+		room,
+		match,
+		me,
+		isHost,
+		onroom,
+		onchat,
+		unread = 0
+	}: { room: Room; match: MatchView; me: string; isHost: boolean; onroom: (r: Room) => void; onchat: () => void; unread?: number } =
 		$props();
 
 	const people = $derived(Object.fromEntries(room.players.map((p) => [p.id, p])) as Record<string, RoomPlayer>);
@@ -108,12 +116,17 @@
 	<header class="bar">
 		<a href="/" aria-label="Voltar ao início"><Icon name="back" /></a>
 		<span class="title">BACK<span>DOOR</span></span>
+		<span class="bar-actions">
+		<button class="pill chat" onclick={onchat} aria-label={unread ? `Chat, ${unread} novas` : 'Chat'}>
+			<Icon name="chat" size={18} />{#if unread}<span class="badge" aria-hidden="true">{unread}</span>{/if}
+		</button>
 		<button class="pill" onclick={() => (showBadge = true)} aria-label="Ver meu crachá">
 			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"
 				><rect x="5" y="3" width="14" height="18" rx="3" /><circle cx="12" cy="10" r="3" /><path d="M8 17h8" /></svg
 			>
 			Crachá
 		</button>
+		</span>
 	</header>
 
 	<section class="card sprints" aria-label="Sprints">
@@ -443,6 +456,32 @@
 		font-size: 13px;
 		font-weight: 600;
 		cursor: pointer;
+	}
+	.bar-actions {
+		display: flex;
+		gap: 8px;
+	}
+	.pill.chat {
+		position: relative;
+		width: 44px;
+		justify-content: center;
+		padding: 0;
+	}
+	.badge {
+		position: absolute;
+		top: -6px;
+		right: -6px;
+		min-width: 18px;
+		height: 18px;
+		padding: 0 5px;
+		border-radius: 9px;
+		background: var(--bd-red);
+		color: #fff;
+		font-size: 11px;
+		font-weight: 700;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 	.card {
 		background: var(--bd-surface);

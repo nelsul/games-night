@@ -252,6 +252,8 @@ func (a *App) routes() http.Handler {
 			r.Post("/rooms/{code}/start", a.handleStartMatch)
 			r.Post("/rooms/{code}/action", a.handleMatchAction)
 			r.Post("/rooms/{code}/stop", a.handleStopMatch)
+			r.Get("/rooms/{code}/messages", a.handleListMessages)
+			r.Post("/rooms/{code}/messages", a.handleSendMessage)
 		})
 		r.NotFound(func(w http.ResponseWriter, r *http.Request) { writeError(w, 404, "Não encontrado.") })
 	})
