@@ -8,7 +8,7 @@ Live at **https://gamesnight.nelsul.com**. Mobile first (Safari and Chrome), dar
 
 | Game | Status | What it is |
 |---|---|---|
-| **Backdoor** | playable | Social deduction for 5–10 people. The devs at Cudia ship sprints for their client Samgung while hidden hackers in the squad try to slip in a backdoor. The Scrum Master proposes squads like pull requests, everyone reviews them, and each sprint is pushed in secret: Deploy or Rollback. Optional roles: Product Owner, Zero-day, Freelancer. |
+| **Backdoor** | playable | Social deduction for 5–12 people. The devs at Cudia ship sprints for their client Samgung while hidden hackers in the squad try to slip in a backdoor. The Scrum Master proposes squads like pull requests, everyone reviews them, and each sprint is pushed in secret: Deploy or Rollback. Optional roles: Product Owner, Zero-day, Freelancer. |
 
 More games will plug into the same hub: rooms, lobby, profiles and live updates are shared; each game brings its own rules and look.
 

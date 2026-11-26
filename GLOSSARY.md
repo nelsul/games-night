@@ -23,7 +23,7 @@ Terms used in code, issues and PRs. The site shows the Portuguese word in parent
 
 - **Cudia**: the made-up software company the players work for. **Samgung**: its made-up client.
 - **Devs** (*Time Devs*): the majority team. Wins by delivering 3 sprints, unless the Social Engineer then finds the Security Analyst.
-- **Hackers** (*Time Hackers*): the hidden minority, about a third of the table. They know each other (except the Freelancer). Win with 3 rollbacks, 5 failed meetings in a row, or the Social Engineer's correct guess.
+- **Hackers** (*Time Hackers*): the hidden minority, about 40% of the table (2 with 5–6 players, 3 with 7–9, 4 with 10–11, 5 with 12). They know each other (except the Freelancer). Win with 3 rollbacks, 5 failed meetings in a row, or the Social Engineer's correct guess.
 - **Badge** (*crachá*): a player's secret role card.
 - **Roles**, always in play: **Dev**; **Security Analyst** (*Analista de Segurança*, a dev who sees the hackers except the Zero-day); **Hacker**; **Social Engineer** (*Engenharia Social*, a hacker who gets one last guess at the Security Analyst if the devs ship 3 sprints).
 - **Optional roles** (host options): **Product Owner** (a dev who sees the Security Analyst, and the Zero-day as a second candidate); **Zero-day** (a hacker the Security Analyst can't see, 7+ players); **Freelancer** (a hacker who doesn't know the other hackers and whom they don't know, 7+ players). Special hackers replace regular ones.

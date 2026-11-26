@@ -6,7 +6,7 @@ export interface Role {
 	name: string;
 	team: 'devs' | 'hackers';
 	text: string;
-	art: 'dev' | 'security' | 'hacker' | 'social';
+	art: 'dev' | 'security' | 'hacker' | 'social' | 'po' | 'zeroday' | 'freelancer';
 }
 
 export interface GameInfo {
@@ -26,7 +26,7 @@ export const backdoor: GameInfo = {
 	name: 'Backdoor',
 	tagline: 'Tem hacker no squad da Cudia',
 	tags: 'Dedução · Blefe · Vida de dev',
-	players: '5–10 jogadores',
+	players: '5–12 jogadores',
 	minutes: '~30 min',
 	synopsis:
 		'Os devs da Cudia precisam entregar o app da Samgung. O problema: tem hacker infiltrado no squad, e ninguém sabe quem é. Aprove PRs, desconfie de todo mundo e não caia na engenharia social.',
@@ -54,14 +54,14 @@ export const backdoor: GameInfo = {
 		{
 			name: 'Product Owner',
 			team: 'devs',
-			art: 'dev',
+			art: 'po',
 			text: 'Opcional. Sabe quem é o Analista e ajuda a protegê-lo.'
 		},
-		{ name: 'Zero-day', team: 'hackers', art: 'hacker', text: 'Opcional, 7+. Um hacker que o Analista não enxerga.' },
+		{ name: 'Zero-day', team: 'hackers', art: 'zeroday', text: 'Opcional, 7+. Um hacker que o Analista não enxerga.' },
 		{
 			name: 'Freelancer',
 			team: 'hackers',
-			art: 'hacker',
+			art: 'freelancer',
 			text: 'Opcional, 7+. Hacker que trabalha sozinho: não conhece os outros hackers.'
 		}
 	]
