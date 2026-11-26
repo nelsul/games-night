@@ -3,6 +3,9 @@
 	// at the bottom) and code review tools (PRs, diffs, pipelines). Everything shown comes
 	// from the server's view for this player; this file never decides a rule.
 	import { onDestroy } from 'svelte';
+	import { fly, scale } from 'svelte/transition';
+	import BackdoorTitle from '$lib/components/BackdoorTitle.svelte';
+	import { feel, haptic, ms, saveFeel, sound } from '$lib/feel.svelte';
 	import { api, ApiError, type Room, type RoomPlayer } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -16,9 +19,58 @@
 		isHost,
 		onroom,
 		onchat,
+		onleave,
 		unread = 0
-	}: { room: Room; match: MatchView; me: string; isHost: boolean; onroom: (r: Room) => void; onchat: () => void; unread?: number } =
-		$props();
+	}: {
+		room: Room;
+		match: MatchView;
+		me: string;
+		isHost: boolean;
+		onroom: (r: Room) => void;
+		onchat: () => void;
+		onleave: () => void;
+		unread?: number;
+	} = $props();
+
+	const onlineCount = $derived(room.players.filter((p) => p.online).length);
+
+	// Sounds and haptics for what happens at the table (not only for taps).
+	let prev: { phase: string; results: number; proposals: number } | null = null;
+	$effect(() => {
+		const cur = { phase: match.phase, results: match.results.length, proposals: match.proposals.length };
+		if (!prev) {
+			prev = cur; // first render: nothing happened yet
+			return;
+		}
+		if (cur.results > prev.results) {
+			const r = match.results.at(-1);
+			sound(r?.rollback ? 'rollback' : 'deploy');
+			haptic(r?.rollback ? 'warning' : 'success');
+		} else if (cur.proposals > prev.proposals) {
+			sound('vote');
+		}
+		if (cur.phase !== prev.phase) {
+			if (cur.phase === 'over') {
+				const won = match.winner === match.me.team;
+				sound(won ? 'win' : 'lose');
+				haptic(won ? 'success' : 'warning');
+			} else if (
+				(cur.phase === 'proposal' && match.me.is_leader) ||
+				(cur.phase === 'push' && match.me.in_squad) ||
+				(cur.phase === 'guess' && match.me.role === 'social_engineer')
+			) {
+				sound('turn');
+				haptic('select');
+			}
+		}
+		prev = cur;
+	});
+
+	function toggleSound() {
+		feel.sound = !feel.sound;
+		saveFeel();
+		if (feel.sound) sound('select');
+	}
 
 	const people = $derived(Object.fromEntries(room.players.map((p) => [p.id, p])) as Record<string, RoomPlayer>);
 	const name = (id: string) => (id === me ? 'você' : (people[id]?.name ?? '?'));
@@ -34,6 +86,8 @@
 		busy = true;
 		try {
 			onroom(await api.post<Room>(`/rooms/${room.code}/action`, action));
+			if (action.type === 'push') sound('push');
+			if (action.type === 'select') sound('select');
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Algo deu errado.';
 		} finally {
@@ -115,9 +169,12 @@
 <div class="bd">
 	<header class="bar">
 		<a href="/" aria-label="Voltar ao início"><Icon name="back" /></a>
-		<span class="title">BACK<span>DOOR</span></span>
+		<BackdoorTitle size={28} />
 		<span class="bar-actions">
-		<button class="pill chat" onclick={onchat} aria-label={unread ? `Chat, ${unread} novas` : 'Chat'}>
+		<button class="pill icon" onclick={toggleSound} aria-label={feel.sound ? 'Desligar sons' : 'Ligar sons'} aria-pressed={feel.sound}>
+			<Icon name={feel.sound ? 'sound' : 'mute'} size={18} />
+		</button>
+		<button class="pill icon chat" onclick={onchat} aria-label={unread ? `Chat, ${unread} novas` : 'Chat'}>
 			<Icon name="chat" size={18} />{#if unread}<span class="badge" aria-hidden="true">{unread}</span>{/if}
 		</button>
 		<button class="pill" onclick={() => (showBadge = true)} aria-label="Ver meu crachá">
@@ -128,6 +185,15 @@
 		</button>
 		</span>
 	</header>
+
+	<div class="presence" aria-label="Quem está na partida">
+		<span class="faces">
+			{#each room.players as p (p.id)}
+				<span class="face" title={name(p.id)}><Avatar user={p} size={24} online={p.online} /></span>
+			{/each}
+		</span>
+		<span class="muted tiny">{onlineCount}/{room.players.length} online</span>
+	</div>
 
 	<section class="card sprints" aria-label="Sprints">
 		<div class="row muted small">
@@ -157,7 +223,7 @@
 	</section>
 
 	{#if showResult && lastResult}
-		<section class="card event" class:bad={lastResult.rollback}>
+		<section class="card event" class:bad={lastResult.rollback} in:fly={{ y: -12, duration: ms(300) }}>
 			<strong>Sprint {match.results.length}: {lastResult.rollback ? 'Rollback' : 'Deploy em produção'}</strong>
 			<span class="muted small"
 				>{lastResult.backdoors === 0
@@ -171,17 +237,19 @@
 	{/if}
 
 	{#if showReview && lastProposal}
-		<section class="card event" class:bad={!lastProposal.approved}>
+		<section class="card event" class:bad={!lastProposal.approved} in:fly={{ y: -12, duration: ms(300) }}>
 			<strong>PR de {name(lastProposal.leader)}: {lastProposal.approved ? 'aprovado' : 'recusado'}</strong>
 			<div class="votes">
-				{#each Object.entries(lastProposal.votes) as [id, yes] (id)}
-					<span class="vote" class:yes><Avatar user={people[id]} size={22} /> {name(id)}: {yes ? 'Approve' : 'Changes'}</span>
+				{#each Object.entries(lastProposal.votes) as [id, yes], i (id)}
+					<span class="vote" class:yes in:scale={{ start: 0.6, duration: ms(220), delay: ms(120 + i * 70) }}><Avatar user={people[id]} size={22} /> {name(id)}: {yes ? 'Approve' : 'Changes'}</span>
 				{/each}
 			</div>
 		</section>
 	{/if}
 
 	<main class="phase">
+		{#key match.phase}
+		<div class="phase-body" in:fly={{ y: 18, duration: ms(280) }}>
 		{#if match.phase === 'badges'}
 			<h1>Seu crachá</h1>
 			<p class="muted">Só você está vendo isto.</p>
@@ -218,7 +286,7 @@
 							disabled={!match.me.is_leader || busy}
 							onclick={() => toggle(p.id)}
 						>
-							<Avatar user={people[p.id]} size={36} />
+							<Avatar user={people[p.id]} size={36} online={people[p.id]?.online} />
 							<span class="pname">{name(p.id)}{#if p.is_leader}<span class="tag">Scrum Master</span>{/if}</span>
 							<span class="check" aria-hidden="true">{#if on}<Icon name="check" size={18} />{/if}</span>
 						</button>
@@ -338,9 +406,9 @@
 				{#if match.guess}Palpite: {name(match.guess)}.{/if}
 			</p>
 			<ul class="reveal">
-				{#each match.players as p (p.id)}
+				{#each match.players as p, i (p.id)}
 					{@const role = match.roles?.[p.id] ?? 'dev'}
-					<li>
+					<li in:fly={{ x: -16, duration: ms(260), delay: ms(150 + i * 90) }}>
 						<Avatar user={people[p.id]} size={32} />
 						<span class="pname">{name(p.id)}</span>
 						<span class="role-tag" class:hk={roleInfo[role].team === 'hackers'}>{roleInfo[role].name}</span>
@@ -365,8 +433,12 @@
 				{:else}
 					<p class="muted center">Esperando o host começar outra partida.</p>
 				{/if}
+				<button class="btn bd-ghost btn-block" onclick={onleave}><Icon name="door" size={18} />Sair da sala</button>
 			</div>
 		{/if}
+
+		</div>
+		{/key}
 
 		{#if error}<p class="error" role="alert">{error}</p>{/if}
 
@@ -435,14 +507,59 @@
 		justify-content: center;
 		margin-left: -10px;
 	}
-	.title {
-		font-family: var(--mono);
-		font-weight: 700;
-		letter-spacing: 1px;
-		color: var(--bd-green);
+	.presence {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		margin-top: -4px;
 	}
-	.title span {
-		color: var(--bd-red);
+	.faces {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+	.face {
+		display: inline-flex;
+	}
+	.phase-body {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+	.pill.icon {
+		width: 40px;
+		justify-content: center;
+		padding: 0;
+	}
+	.track li.ok,
+	.track li.bad {
+		animation: gn-pop 0.45s ease-out;
+	}
+	.track li.now {
+		animation: bd-now 2s ease-in-out infinite;
+	}
+	@keyframes bd-now {
+		0%,
+		100% {
+			box-shadow: 0 0 0 0 rgba(210, 153, 34, 0.45);
+		}
+		50% {
+			box-shadow: 0 0 0 6px rgba(210, 153, 34, 0);
+		}
+	}
+	.event.bad {
+		animation: gn-shake 0.5s ease-in-out;
+	}
+	.sev {
+		animation: gn-pop 0.5s ease-out;
+	}
+	.person {
+		transition:
+			border-color 0.15s ease,
+			background-color 0.15s ease,
+			transform 0.12s ease;
 	}
 	.pill {
 		display: inline-flex;
@@ -463,7 +580,6 @@
 	}
 	.pill.chat {
 		position: relative;
-		width: 44px;
 		justify-content: center;
 		padding: 0;
 	}

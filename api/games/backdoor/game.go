@@ -179,6 +179,15 @@ func (*Game) View(ctx context.Context, q games.Querier, roomID, userID string) (
 	return ViewFor(&s, userID), nil
 }
 
+func (*Game) Over(ctx context.Context, q games.Querier, roomID string) (bool, error) {
+	var over bool
+	err := q.QueryRow(ctx, `SELECT state->>'phase' = 'over' FROM backdoor.matches WHERE room_id = $1 AND closed_at IS NULL`, roomID).Scan(&over)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return over, err
+}
+
 func (*Game) Stop(ctx context.Context, tx pgx.Tx, roomID string) error {
 	_, err := tx.Exec(ctx, `UPDATE backdoor.matches SET closed_at = now() WHERE room_id = $1 AND closed_at IS NULL`, roomID)
 	return err

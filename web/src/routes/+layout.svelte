@@ -5,6 +5,8 @@
 	import { loadMe, session } from '$lib/session.svelte';
 	import { refreshInbox, startInbox, stopInbox } from '$lib/inbox.svelte';
 	import TabBar from '$lib/components/TabBar.svelte';
+	import { onMount } from 'svelte';
+	import { tapFeedback } from '$lib/feel.svelte';
 
 	let { children } = $props();
 
@@ -12,6 +14,16 @@
 	const tabPaths = ['/', '/salas', '/amigos', '/perfil'];
 
 	let ready = $state(false);
+
+	// Every tap on a button or button-like link gets a light haptic tick and a soft click.
+	onMount(() => {
+		const onTap = (e: MouseEvent) => {
+			const el = (e.target as Element | null)?.closest('button, a.btn, [role="switch"], [role="radio"], [role="tab"]');
+			if (el && !(el as HTMLButtonElement).disabled) tapFeedback();
+		};
+		document.addEventListener('click', onTap, true);
+		return () => document.removeEventListener('click', onTap, true);
+	});
 
 	// Friend requests and invites follow the person around the site while signed in.
 	$effect(() => {

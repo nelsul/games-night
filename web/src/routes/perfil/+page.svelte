@@ -5,6 +5,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import PhotoPicker from '$lib/components/PhotoPicker.svelte';
 	import HandleField from '$lib/components/HandleField.svelte';
+	import { feel, haptic, saveFeel, sound } from '$lib/feel.svelte';
 
 	let name = $state(session.me?.name ?? '');
 	let handle = $state(session.me?.handle ?? '');
@@ -65,6 +66,34 @@
 			{saved ? 'Salvo' : 'Salvar'}
 		</button>
 	</form>
+	<section class="prefs" aria-labelledby="prefs-title">
+		<h2 id="prefs-title">Nos jogos</h2>
+		<label class="pref">
+			<span><strong>Sons</strong><span class="muted">Efeitos de votos, deploys, rollbacks e chat.</span></span>
+			<input
+				type="checkbox"
+				role="switch"
+				bind:checked={feel.sound}
+				onchange={() => {
+					saveFeel();
+					if (feel.sound) sound('select');
+				}}
+			/>
+		</label>
+		<label class="pref">
+			<span><strong>Vibração</strong><span class="muted">Ao tocar nos botões e nos momentos importantes.</span></span>
+			<input
+				type="checkbox"
+				role="switch"
+				bind:checked={feel.haptics}
+				onchange={() => {
+					saveFeel();
+					if (feel.haptics) haptic('select');
+				}}
+			/>
+		</label>
+	</section>
+
 	<button type="button" class="btn btn-ghost btn-block" onclick={logout}><Icon name="logout" size={20} />Sair</button>
 </main>
 
@@ -87,6 +116,63 @@
 		margin: 0;
 		font-size: 14px;
 		word-break: break-all;
+	}
+	.prefs {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		background: var(--surface);
+		border-radius: var(--radius);
+		padding: 4px 12px;
+	}
+	.prefs h2 {
+		margin: 8px 0 4px;
+		font-size: 16px;
+	}
+	.pref {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 60px;
+		cursor: pointer;
+	}
+	.pref > span {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		font-size: 13px;
+	}
+	.pref strong {
+		font-size: 15px;
+	}
+	.pref input {
+		appearance: none;
+		width: 52px;
+		height: 32px;
+		border-radius: 16px;
+		background: #4d4d4d;
+		position: relative;
+		cursor: pointer;
+		flex-shrink: 0;
+		transition: background-color 0.15s;
+	}
+	.pref input::after {
+		content: '';
+		position: absolute;
+		top: 3px;
+		left: 3px;
+		width: 26px;
+		height: 26px;
+		border-radius: 50%;
+		background: #fff;
+		transition: transform 0.15s;
+	}
+	.pref input:checked {
+		background: var(--brand);
+	}
+	.pref input:checked::after {
+		transform: translateX(20px);
 	}
 	.link {
 		align-self: center;

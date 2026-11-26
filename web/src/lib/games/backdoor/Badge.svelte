@@ -9,6 +9,7 @@
 	import Freelancer from '$lib/art/Freelancer.svelte';
 	import type { RoomPlayer } from '$lib/api';
 	import { roleInfo, type MatchView } from './types';
+	import { haptic, sound } from '$lib/feel.svelte';
 
 	let { match, people }: { match: MatchView; people: Record<string, RoomPlayer> } = $props();
 
@@ -37,7 +38,11 @@
 	<button
 		type="button"
 		class="hold"
-		onpointerdown={() => (open = true)}
+		onpointerdown={() => {
+			open = true;
+			sound('reveal');
+			haptic('select');
+		}}
 		onpointerup={() => (open = false)}
 		onpointerleave={() => (open = false)}
 		onpointercancel={() => (open = false)}
@@ -134,6 +139,21 @@
 	}
 	.lock {
 		color: var(--bd-muted);
+	}
+	.role,
+	.text,
+	.knows {
+		animation: bd-reveal 0.28s ease-out;
+	}
+	@keyframes bd-reveal {
+		from {
+			opacity: 0;
+			transform: translateY(8px) scale(0.97);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
 	}
 	.role {
 		display: flex;

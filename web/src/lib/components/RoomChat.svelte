@@ -13,6 +13,26 @@
 	let sending = $state(false);
 	let list = $state<HTMLOListElement>();
 	let input = $state<HTMLTextAreaElement>();
+	let showEmoji = $state(false);
+
+	// Quick picks for the table: laughs, suspicion, accusations, dev life.
+	const emojis = [
+		'😂', '🤣', '😅', '😎', '🤔', '🤨', '🧐', '😏', '😈', '👀', '🙄', '😬',
+		'😱', '😭', '🥲', '😡', '🤯', '🫡', '🙏', '👍', '👎', '👏', '🔥', '💀',
+		'🤡', '🕵️', '🐍', '🐀', '💻', '🐛', '🚀', '✅', '❌', '🔒', '🔓', '☕',
+		'🍕', '🍻', '🎉', '❤️', '💔', '🤝'
+	];
+
+	function addEmoji(e: string) {
+		const el = input;
+		const start = el?.selectionStart ?? text.length;
+		const end = el?.selectionEnd ?? text.length;
+		if (text.length + e.length > 300) return;
+		text = text.slice(0, start) + e + text.slice(end);
+		tick().then(() => {
+			el?.setSelectionRange(start + e.length, start + e.length);
+		});
+	}
 
 	const time = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
@@ -70,7 +90,22 @@
 			{/each}
 		</ol>
 		{#if error}<p class="error" role="alert">{error}</p>{/if}
+		{#if showEmoji}
+			<div class="emojis" role="group" aria-label="Emojis">
+				{#each emojis as e (e)}
+					<button type="button" onclick={() => addEmoji(e)} aria-label="Inserir {e}">{e}</button>
+				{/each}
+			</div>
+		{/if}
 		<form onsubmit={send}>
+			<button
+				type="button"
+				class="emoji-btn"
+				class:on={showEmoji}
+				onclick={() => (showEmoji = !showEmoji)}
+				aria-label={showEmoji ? 'Fechar emojis' : 'Emojis'}
+				aria-expanded={showEmoji}><Icon name="smile" size={22} /></button
+			>
 			<label for="chat-input" class="sr-only">Mensagem</label>
 			<textarea
 				id="chat-input"
@@ -193,6 +228,53 @@
 	}
 	.error {
 		padding: 0 16px;
+	}
+	.emojis {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+		gap: 2px;
+		padding: 8px 10px 0;
+		max-height: 150px;
+		overflow-y: auto;
+		border-top: 1px solid var(--line);
+		animation: gn-pop 0.2s ease-out;
+	}
+	.emojis button {
+		height: 44px;
+		border: none;
+		background: none;
+		font-size: 24px;
+		border-radius: 10px;
+		cursor: pointer;
+	}
+	.emojis button:hover {
+		background: #2a2a2a;
+	}
+	.emoji-btn {
+		width: 44px;
+		height: 44px;
+		flex-shrink: 0;
+		border: none;
+		background: none;
+		color: var(--muted);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		border-radius: 50%;
+	}
+	.emoji-btn.on {
+		color: #fff;
+		background: #2a2a2a;
+	}
+	li {
+		animation: chat-in 0.2s ease-out;
+	}
+	@keyframes chat-in {
+		from {
+			opacity: 0;
+			transform: translateY(6px);
+		}
 	}
 	form {
 		display: flex;

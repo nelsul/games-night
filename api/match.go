@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -33,8 +35,8 @@ func (a *App) gameError(w http.ResponseWriter, r *http.Request, err error) {
 	a.serverError(w, r, err)
 }
 
-// hostRoom loads the room, checks the caller is its host and that it's in status.
-func (a *App) hostRoom(w http.ResponseWriter, r *http.Request, status string) (roomRow, games.Engine, bool) {
+// hostRoom loads the room, checks the caller is its host and that it's in one of statuses.
+func (a *App) hostRoom(w http.ResponseWriter, r *http.Request, statuses ...string) (roomRow, games.Engine, bool) {
 	rr, ok := a.memberRoom(w, r)
 	if !ok {
 		return rr, nil, false
@@ -43,8 +45,8 @@ func (a *App) hostRoom(w http.ResponseWriter, r *http.Request, status string) (r
 		writeError(w, 403, "Só o host pode fazer isso.")
 		return rr, nil, false
 	}
-	if rr.Status != status {
-		if status == "lobby" {
+	if !slices.Contains(statuses, rr.Status) {
+		if statuses[0] == "lobby" {
 			writeError(w, 409, "A partida já começou.")
 		} else {
 			writeError(w, 409, "Não há partida rolando nessa sala.")
@@ -155,8 +157,7 @@ func (a *App) handleMatchAction(w http.ResponseWriter, r *http.Request) {
 		if err := e.Act(ctx, tx, rr.ID, currentUser(ctx), raw, time.Now()); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `UPDATE rooms SET updated_at = now() WHERE id = $1`, rr.ID)
-		return err
+		return markIfOver(ctx, tx, e, rr.ID)
 	})
 	if err != nil {
 		a.gameError(w, r, err)
@@ -169,7 +170,7 @@ func (a *App) handleMatchAction(w http.ResponseWriter, r *http.Request) {
 // handleStopMatch closes the current match and takes the room back to the lobby:
 // "play again" after the end, or ending a match early.
 func (a *App) handleStopMatch(w http.ResponseWriter, r *http.Request) {
-	rr, e, ok := a.hostRoom(w, r, "playing")
+	rr, e, ok := a.hostRoom(w, r, "playing", "finished")
 	if !ok {
 		return
 	}
@@ -186,4 +187,18 @@ func (a *App) handleStopMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.respondRoom(w, r, rr.ID)
+}
+
+// markIfOver moves the room to "finished" once its match has ended, so people may leave.
+func markIfOver(ctx context.Context, tx pgx.Tx, e games.Engine, roomID string) error {
+	over, err := e.Over(ctx, tx, roomID)
+	if err != nil {
+		return err
+	}
+	status := "playing"
+	if over {
+		status = "finished"
+	}
+	_, err = tx.Exec(ctx, `UPDATE rooms SET status = $2, updated_at = now() WHERE id = $1`, roomID, status)
+	return err
 }

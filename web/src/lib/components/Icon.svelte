@@ -21,7 +21,10 @@
 		| 'rotate'
 		| 'flip'
 		| 'chat'
-		| 'send';
+		| 'send'
+		| 'sound'
+		| 'mute'
+		| 'smile';
 	let { name, size = 24, label }: { name: Name; size?: number; label?: string } = $props();
 </script>
 
@@ -58,6 +61,9 @@
 	{:else if name === 'flip'}<path d="M12 3v18M8 7l-5 10h5zM16 7l5 10h-5z" />
 	{:else if name === 'chat'}<path d="M4 5h16v11H9l-5 4z" />
 	{:else if name === 'send'}<path d="M4 12l16-8-6 16-3-7z" />
+	{:else if name === 'sound'}<path d="M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" />
+	{:else if name === 'mute'}<path d="M4 9h4l5-4v14l-5-4H4zM16 9l5 6M21 9l-5 6" />
+	{:else if name === 'smile'}<circle cx="12" cy="12" r="9" /><path d="M8 14c1 1.5 2.4 2.2 4 2.2s3-.7 4-2.2M9 9.5h.01M15 9.5h.01" />
 	{:else if name === 'door'}<path d="M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17M3 21h18M14 12h.01" />
 	{/if}
 </svg>

@@ -5,6 +5,9 @@
 	import QRCode from 'qrcode';
 	import { api, ApiError, type ChatMessage, type InvitableFriend, type Room } from '$lib/api';
 	import RoomChat from '$lib/components/RoomChat.svelte';
+	import { flip } from 'svelte/animate';
+	import { scale } from 'svelte/transition';
+	import { haptic, ms, sound } from '$lib/feel.svelte';
 	import { connectRoom, type RoomSocket } from '$lib/room-socket';
 	import { session } from '$lib/session.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -30,11 +33,23 @@
 	const me = $derived(session.me?.id ?? '');
 	const isHost = $derived(room?.host_id === me);
 	const missing = $derived(room ? Math.max(0, room.game.min_players - room.players.length) : 0);
-	const match = $derived(room?.status === 'playing' ? (room.match as MatchView | null) : null);
+	const match = $derived(
+		room?.status === 'playing' || room?.status === 'finished' ? (room.match as MatchView | null) : null
+	);
 	// Zero-day and Freelancer need 7+ people; the server checks it too.
 	const specialsBlocked = $derived(
 		!!room && (room.options?.zero_day === true || room.options?.freelancer === true) && room.players.length < 7
 	);
+	const onlineCount = $derived(room ? room.players.filter((p) => p.online).length : 0);
+
+	// A chime when someone (or a bot) arrives in the lobby.
+	let seenPlayers = -1;
+	$effect(() => {
+		const n = room?.players.length ?? 0;
+		if (seenPlayers >= 0 && n > seenPlayers && room?.status === 'lobby') sound('join');
+		seenPlayers = n;
+	});
+
 	let botsBusy = $state(false);
 	let botsError = $state('');
 
@@ -99,7 +114,10 @@
 	}
 
 	function onChat(m: ChatMessage) {
-		if (!addMessages([m]) || m.user.id === me || chatOpen) return;
+		if (!addMessages([m]) || m.user.id === me) return;
+		sound('chat');
+		if (chatOpen) return;
+		haptic('tap');
 		unread++;
 		toast = m;
 		clearTimeout(toastTimer);
@@ -186,7 +204,7 @@
 <svelte:head><title>Sala {code} · Games Night</title></svelte:head>
 
 {#if room && match}
-	<Backdoor {room} {match} {me} isHost={isHost} onroom={(r) => (room = r)} onchat={openChat} {unread} />
+	<Backdoor {room} {match} {me} isHost={isHost} onroom={(r) => (room = r)} onchat={openChat} onleave={leave} {unread} />
 {:else}
 <main class="page lobby">
 	<header>
@@ -218,14 +236,15 @@
 				<span>{code}</span>
 				<Icon name="qr" size={20} />
 			</button>
+			<p class="online"><span class="pulse" aria-hidden="true"></span>{onlineCount} de {room.players.length} online agora</p>
 			{#if !connected}<p class="reconnecting" role="status">Reconectando…</p>{/if}
 		</div>
 
 		<ul class="players">
 			{#each room.players as p (p.id)}
-				<li class:offline={!p.online}>
+				<li class:offline={!p.online} animate:flip={{ duration: ms(250) }} in:scale={{ start: 0.5, duration: ms(300) }}>
 					<span class="tile">
-						<Avatar user={p} size={96} radius={6} />
+						<Avatar user={p} size={96} radius={6} online={p.online} />
 						{#if p.is_host}<span class="host">HOST</span>{/if}
 						{#if p.is_bot}<span class="host bot">BOT</span>{/if}
 						{#if p.is_bot && isHost && room.status === 'lobby'}
@@ -465,6 +484,21 @@
 		font-size: 30px;
 		letter-spacing: 6px;
 		padding-top: 4px;
+	}
+	.online {
+		margin: 0;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 13px;
+		color: var(--muted);
+	}
+	.pulse {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: #3fb950;
+		animation: gn-glow 2s ease-in-out infinite;
 	}
 	.reconnecting {
 		margin: 0;
