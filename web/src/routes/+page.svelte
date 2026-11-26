@@ -1,16 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, ApiError, type RoomSummary } from '$lib/api';
-	import { createRoom } from '$lib/games';
+	import { createRoom, gameList } from '$lib/games';
 	import { session } from '$lib/session.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
-	import BackdoorTitle from '$lib/components/BackdoorTitle.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Logo from '$lib/components/Logo.svelte';
-	import KeyArt from '$lib/art/KeyArt.svelte';
 	import RoomCard from '$lib/components/RoomCard.svelte';
 	import { inbox, refreshInbox } from '$lib/inbox.svelte';
 	import { goto } from '$app/navigation';
+
+	// The billboard shows one game; with more games it rotates daily.
+	const featured = gameList[Math.floor(Date.now() / 86_400_000) % Math.max(gameList.length, 1)];
 
 	let rooms = $state<RoomSummary[]>([]);
 	let error = $state('');
@@ -29,7 +30,7 @@
 		error = '';
 		creating = true;
 		try {
-			await createRoom('backdoor');
+			await createRoom(featured.info.id);
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Algo deu errado.';
 			creating = false;
@@ -67,11 +68,12 @@
 		</section>
 	{/if}
 
+	{#if featured}
 	<section class="billboard" aria-label="Destaque">
-		<a href="/jogos/backdoor" aria-label="Ver o Backdoor" class="art"><KeyArt /></a>
+		<a href="/jogos/{featured.info.id}" aria-label="Ver o {featured.info.name}" class="art"><featured.KeyArt /></a>
 		<div class="info">
-			<BackdoorTitle />
-			<span class="tags">Dedução · Blefe · Vida de dev · 5–12</span>
+			<featured.Title />
+			<span class="tags">{featured.info.tags} · {featured.info.players}</span>
 			<div class="actions">
 				<button class="btn btn-primary" onclick={create} disabled={creating}>
 					<Icon name="play" size={18} />{creating ? 'Criando…' : 'Criar sala'}
@@ -81,6 +83,7 @@
 			{#if error}<p class="error" role="alert">{error}</p>{/if}
 		</div>
 	</section>
+	{/if}
 
 	{#if rooms.length}
 		<section class="row">
@@ -96,10 +99,12 @@
 	<section class="row">
 		<h2 class="row-title">Jogos</h2>
 		<div class="scroller">
-			<a class="poster" href="/jogos/backdoor">
-				<span class="poster-art"><BackdoorTitle size={34} /></span>
-				<span class="poster-caption">Tem hacker no squad</span>
-			</a>
+			{#each gameList as g (g.info.id)}
+				<a class="poster" href="/jogos/{g.info.id}">
+					<span class="poster-art"><g.Title size={34} /></span>
+					<span class="poster-caption">{g.info.tagline}</span>
+				</a>
+			{/each}
 			<div class="poster soon" aria-label="Próximo jogo em breve">
 				<span class="poster-art">EM BREVE</span>
 				<span class="poster-caption">Próximo jogo</span>

@@ -21,6 +21,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nelsul/games-night/api/games"
 )
 
 //go:embed migrations/*.sql
@@ -114,12 +115,15 @@ func run(log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	if err := migrate(ctx, db, log, hubMigrations, "public"); err != nil {
+	if err := migrate(ctx, db, log, hubMigrations, "public", ""); err != nil {
 		return fmt.Errorf("migrate hub: %w", err)
 	}
-	// Each game keeps its tables in its own schema, with its own migrations.
-	for _, e := range engines {
-		if err := migrate(ctx, db, log, e.Migrations(), e.Schema()); err != nil {
+	// Each game keeps its tables in its own schema, migrated as its own role.
+	for _, e := range games.All() {
+		if err := setupGameDB(ctx, db, e); err != nil {
+			return fmt.Errorf("set up %s: %w", e.Info().ID, err)
+		}
+		if err := migrate(ctx, db, log, e.Migrations(), e.Info().ID, games.Role(e.Info().ID)); err != nil {
 			return fmt.Errorf("migrate %s: %w", e.Info().ID, err)
 		}
 	}
@@ -170,14 +174,24 @@ func connectDB(ctx context.Context, url string) (*pgxpool.Pool, error) {
 }
 
 // migrate applies every *.sql file in fsys not yet recorded in <schema>.schema_migrations,
-// in name order, each in its own transaction. Game schemas are created on first run.
-func migrate(ctx context.Context, db *pgxpool.Pool, log *slog.Logger, fsys fs.FS, schema string) error {
-	ident := pgx.Identifier{schema}.Sanitize()
-	if _, err := db.Exec(ctx, `CREATE SCHEMA IF NOT EXISTS `+ident); err != nil {
+// in name order, each in its own transaction. With a role (games), everything runs as it.
+func migrate(ctx context.Context, db *pgxpool.Pool, log *slog.Logger, fsys fs.FS, schema, role string) error {
+	asRole := func(tx pgx.Tx) error {
+		if role == "" {
+			return nil
+		}
+		_, err := tx.Exec(ctx, `SET LOCAL ROLE `+pgx.Identifier{role}.Sanitize())
 		return err
 	}
 	table := pgx.Identifier{schema, "schema_migrations"}.Sanitize()
-	if _, err := db.Exec(ctx, `CREATE TABLE IF NOT EXISTS `+table+` (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`); err != nil {
+	err := pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
+		if err := asRole(tx); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `CREATE TABLE IF NOT EXISTS `+table+` (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`)
+		return err
+	})
+	if err != nil {
 		return err
 	}
 	names, err := fs.Glob(fsys, "*.sql")
@@ -198,6 +212,9 @@ func migrate(ctx context.Context, db *pgxpool.Pool, log *slog.Logger, fsys fs.FS
 			return err
 		}
 		err = pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
+			if err := asRole(tx); err != nil {
+				return err
+			}
 			if _, err := tx.Exec(ctx, string(sql)); err != nil {
 				return fmt.Errorf("%s: %w", name, err)
 			}

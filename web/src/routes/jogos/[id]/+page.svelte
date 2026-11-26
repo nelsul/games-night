@@ -2,19 +2,10 @@
 	import { page } from '$app/state';
 	import { ApiError } from '$lib/api';
 	import { createRoom, games } from '$lib/games';
-	import BackdoorTitle from '$lib/components/BackdoorTitle.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import KeyArt from '$lib/art/KeyArt.svelte';
-	import Dev from '$lib/art/Dev.svelte';
-	import Security from '$lib/art/Security.svelte';
-	import Hacker from '$lib/art/Hacker.svelte';
-	import Social from '$lib/art/Social.svelte';
-	import ProductOwner from '$lib/art/ProductOwner.svelte';
-	import ZeroDay from '$lib/art/ZeroDay.svelte';
-	import Freelancer from '$lib/art/Freelancer.svelte';
 
-	const game = $derived(games[page.params.id ?? '']);
-	const art = { dev: Dev, security: Security, hacker: Hacker, social: Social, po: ProductOwner, zeroday: ZeroDay, freelancer: Freelancer };
+	const mod = $derived(games[page.params.id ?? '']);
+	const game = $derived(mod?.info);
 
 	let tab = $state<'roles' | 'how'>('roles');
 	let error = $state('');
@@ -35,7 +26,7 @@
 
 <svelte:head><title>{game?.name ?? 'Jogo'} · Games Night</title></svelte:head>
 
-{#if !game}
+{#if !game || !mod}
 	<main class="page">
 		<p>Esse jogo não existe.</p>
 		<a class="btn btn-primary" href="/">Voltar ao início</a>
@@ -43,13 +34,13 @@
 {:else}
 	<main class="detail">
 		<div class="hero">
-			<KeyArt height={240} />
+			<mod.KeyArt height={240} />
 			<a href="/" class="close" aria-label="Fechar"><Icon name="close" size={18} /></a>
 		</div>
 
 		<div class="body">
 			<span class="original">GAMES NIGHT ORIGINAL</span>
-			<h1><BackdoorTitle size={52} /><span class="sr-only">{game.name}</span></h1>
+			<h1><mod.Title size={52} /><span class="sr-only">{game.name}</span></h1>
 			<div class="meta">
 				<span class="new">Novo</span><span>{game.players}</span><span>{game.minutes}</span><span class="lang">PT-BR</span>
 			</div>
@@ -68,12 +59,12 @@
 			{#if tab === 'roles'}
 				<div role="tabpanel"><ul class="roles">
 					{#each game.roles as role (role.name)}
-						{@const Art = art[role.art]}
+						{@const Art = role.art}
 						<li>
 							<span class="role-art"><Art size={88} /></span>
 							<span class="role-text">
 								<strong>{role.name}</strong>
-								<span class="team {role.team}">{role.team === 'devs' ? 'Time Devs' : 'Time Hackers'}</span>
+								<span class="team {role.tone}">{role.team}</span>
 								<span class="muted">{role.text}</span>
 							</span>
 						</li>
@@ -213,10 +204,10 @@
 		font-size: 12px;
 		font-weight: 600;
 	}
-	.team.devs {
+	.team.good {
 		color: #3fb950;
 	}
-	.team.hackers {
+	.team.bad {
 		color: #ff7b72;
 	}
 	.how li {

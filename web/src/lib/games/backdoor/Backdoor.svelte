@@ -4,7 +4,7 @@
 	// from the server's view for this player; this file never decides a rule.
 	import { onDestroy } from 'svelte';
 	import { fly, scale } from 'svelte/transition';
-	import BackdoorTitle from '$lib/components/BackdoorTitle.svelte';
+	import Title from './Title.svelte';
 	import { feel, haptic, ms, saveFeel, sound } from '$lib/feel.svelte';
 	import { api, ApiError, type Room, type RoomPlayer } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -169,7 +169,7 @@
 <div class="bd">
 	<header class="bar">
 		<a href="/" aria-label="Voltar ao início"><Icon name="back" /></a>
-		<BackdoorTitle size={28} />
+		<Title size={28} />
 		<span class="bar-actions">
 		<button class="pill icon" onclick={toggleSound} aria-label={feel.sound ? 'Desligar sons' : 'Ligar sons'} aria-pressed={feel.sound}>
 			<Icon name={feel.sound ? 'sound' : 'mute'} size={18} />

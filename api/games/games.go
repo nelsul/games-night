@@ -6,7 +6,9 @@ package games
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/fs"
+	"regexp"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -28,9 +30,10 @@ type Querier interface {
 
 type Engine interface {
 	Info() Info
-	// Schema is the game's own Postgres schema; Migrations holds its *.sql files,
-	// applied in name order and tracked in <schema>.schema_migrations.
-	Schema() string
+	// Migrations holds the game's *.sql files. They run, in name order, as the game's
+	// own database role (Role) inside its own schema, named after the game's id, and
+	// are tracked in <id>.schema_migrations. The role can't touch the hub's tables
+	// (beyond pointing at rooms(id) and users(id)) or any other game's schema.
 	Migrations() fs.FS
 	// CheckOptions validates lobby options sent by the host and returns them normalized.
 	CheckOptions(raw json.RawMessage) (json.RawMessage, error)
@@ -52,6 +55,32 @@ type Engine interface {
 type BotPlayer interface {
 	BotStep(ctx context.Context, tx pgx.Tx, roomID string, bots []string, now time.Time) (bool, error)
 }
+
+// idRe is what a game id may look like; it is also its schema name.
+var idRe = regexp.MustCompile(`^[a-z][a-z0-9_]{1,30}$`)
+
+var registry []Engine
+
+// Register adds a game to the hub. Each game calls it from its package's init(), and
+// is pulled into the build by a one-line file in api/games/all/<id>.go.
+func Register(e Engine) {
+	id := e.Info().ID
+	if !idRe.MatchString(id) || id == "public" || id == "pg_catalog" {
+		panic(fmt.Sprintf("games: invalid game id %q", id))
+	}
+	for _, other := range registry {
+		if other.Info().ID == id {
+			panic(fmt.Sprintf("games: %q registered twice", id))
+		}
+	}
+	registry = append(registry, e)
+}
+
+// All is every registered game, in registration order.
+func All() []Engine { return registry }
+
+// Role is the database role a game's migrations and queries run as.
+func Role(id string) string { return "game_" + id }
 
 // UserError is an error whose message is meant for players (in Portuguese).
 type UserError interface {

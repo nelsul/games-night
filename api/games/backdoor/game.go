@@ -21,6 +21,8 @@ var migrationsFS embed.FS
 // UserMessage makes rule errors reach players as they are.
 func (e *RuleError) UserMessage() string { return e.Msg }
 
+func init() { games.Register(New()) }
+
 // Game plugs Backdoor into the hub and keeps matches in the backdoor schema.
 type Game struct{}
 
@@ -29,8 +31,6 @@ func New() *Game { return &Game{} }
 func (*Game) Info() games.Info {
 	return games.Info{ID: "backdoor", Name: "Backdoor", MinPlayers: MinPlayers, MaxPlayers: MaxPlayers, Available: true}
 }
-
-func (*Game) Schema() string { return "backdoor" }
 
 func (*Game) Migrations() fs.FS {
 	sub, err := fs.Sub(migrationsFS, "migrations")

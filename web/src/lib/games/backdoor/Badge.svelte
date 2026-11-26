@@ -1,12 +1,12 @@
 <script lang="ts">
 	// The secret badge: hidden until you hold it, so nobody peeks at your phone.
-	import Dev from '$lib/art/Dev.svelte';
-	import Hacker from '$lib/art/Hacker.svelte';
-	import Security from '$lib/art/Security.svelte';
-	import Social from '$lib/art/Social.svelte';
-	import ProductOwner from '$lib/art/ProductOwner.svelte';
-	import ZeroDay from '$lib/art/ZeroDay.svelte';
-	import Freelancer from '$lib/art/Freelancer.svelte';
+	import Dev from './art/Dev.svelte';
+	import Hacker from './art/Hacker.svelte';
+	import Security from './art/Security.svelte';
+	import Social from './art/Social.svelte';
+	import ProductOwner from './art/ProductOwner.svelte';
+	import ZeroDay from './art/ZeroDay.svelte';
+	import Freelancer from './art/Freelancer.svelte';
 	import type { RoomPlayer } from '$lib/api';
 	import { roleInfo, type MatchView } from './types';
 	import { haptic, sound } from '$lib/feel.svelte';

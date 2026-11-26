@@ -4,17 +4,14 @@ import (
 	"net/http"
 
 	"github.com/nelsul/games-night/api/games"
-	"github.com/nelsul/games-night/api/games/backdoor"
+	_ "github.com/nelsul/games-night/api/games/all" // registers every game
 )
 
 // Game is a catalog entry as the site sees it.
 type Game = games.Info
 
-// engines is every game the hub can host. Each owns its rules and its own schema.
-var engines = []games.Engine{backdoor.New()}
-
 func findEngine(id string) (games.Engine, bool) {
-	for _, e := range engines {
+	for _, e := range games.All() {
 		if e.Info().ID == id {
 			return e, true
 		}
@@ -31,8 +28,8 @@ func findGame(id string) (Game, bool) {
 }
 
 func (a *App) handleListGames(w http.ResponseWriter, r *http.Request) {
-	out := make([]Game, 0, len(engines))
-	for _, e := range engines {
+	out := []Game{}
+	for _, e := range games.All() {
 		out = append(out, e.Info())
 	}
 	writeJSON(w, 200, out)
