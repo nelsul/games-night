@@ -9,6 +9,9 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import BackdoorTitle from '$lib/components/BackdoorTitle.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import Backdoor from '$lib/games/backdoor/Backdoor.svelte';
+	import LobbyOptions from '$lib/games/backdoor/LobbyOptions.svelte';
+	import type { MatchView } from '$lib/games/backdoor/types';
 
 	const code = $derived((page.params.code ?? '').toUpperCase());
 
@@ -26,6 +29,25 @@
 	const me = $derived(session.me?.id ?? '');
 	const isHost = $derived(room?.host_id === me);
 	const missing = $derived(room ? Math.max(0, room.game.min_players - room.players.length) : 0);
+	const match = $derived(room?.status === 'playing' ? (room.match as MatchView | null) : null);
+	// Zero-day and Freelancer need 7+ people; the server checks it too.
+	const specialsBlocked = $derived(
+		!!room && (room.options?.zero_day === true || room.options?.freelancer === true) && room.players.length < 7
+	);
+	let starting = $state(false);
+	let startError = $state('');
+
+	async function start() {
+		startError = '';
+		starting = true;
+		try {
+			room = await api.post<Room>(`/rooms/${code}/start`);
+		} catch (err) {
+			startError = err instanceof ApiError ? err.message : 'Algo deu errado.';
+		} finally {
+			starting = false;
+		}
+	}
 	const full = $derived(room ? room.players.length >= room.game.max_players : false);
 	const link = $derived(`${location.origin}/sala/${code}`);
 
@@ -98,6 +120,9 @@
 
 <svelte:head><title>Sala {code} · Games Night</title></svelte:head>
 
+{#if room && match}
+	<Backdoor {room} {match} {me} isHost={isHost} onroom={(r) => (room = r)} />
+{:else}
 <main class="page lobby">
 	<header>
 		<a href="/" aria-label="Voltar ao início"><Icon name="back" /></a>
@@ -147,27 +172,37 @@
 			{/if}
 		</ul>
 
+		<LobbyOptions {room} {isHost} onchange={(r) => (room = r)} />
+
 		<div class="bottom">
 			<p class="muted center">
 				{room.players.length} de {room.game.max_players} ·
 				{#if missing > 0}
 					{missing === 1 ? 'falta 1 pessoa' : `faltam ${missing} pessoas`} para começar
-				{:else if !room.game.available}
-					o {room.game.name} chega na próxima versão
+				{:else if specialsBlocked}
+					Zero-day e Freelancer precisam de 7 pessoas
+				{:else if room.status === 'playing'}
+					carregando a partida…
 				{:else if isHost}
 					tudo pronto
 				{:else}
 					esperando o host começar
 				{/if}
 			</p>
+			{#if startError}<p class="error center" role="alert">{startError}</p>{/if}
 			{#if isHost}
-				<button class="btn btn-primary btn-block" disabled={missing > 0 || !room.game.available}>
-					<Icon name="play" size={18} />Começar partida
+				<button
+					class="btn btn-primary btn-block"
+					disabled={missing > 0 || specialsBlocked || !room.game.available || starting}
+					onclick={start}
+				>
+					<Icon name="play" size={18} />{starting ? 'Distribuindo crachás…' : 'Começar partida'}
 				</button>
 			{/if}
 		</div>
 	{/if}
 </main>
+{/if}
 
 {#if showInvite}
 	<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="invite-title">

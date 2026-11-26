@@ -89,6 +89,33 @@ func (h *Hub) Send(roomID string, msg any) {
 	}
 }
 
+// SendEach sends every client in the room its own message, built once per person by
+// build (games show each player only what they may see).
+func (h *Hub) SendEach(roomID string, build func(userID string) any) {
+	h.mu.Lock()
+	clients := make([]*client, 0, len(h.rooms[roomID]))
+	for c := range h.rooms[roomID] {
+		clients = append(clients, c)
+	}
+	h.mu.Unlock()
+	cache := map[string][]byte{}
+	for _, c := range clients {
+		b, ok := cache[c.userID]
+		if !ok {
+			var err error
+			if b, err = json.Marshal(build(c.userID)); err != nil {
+				continue
+			}
+			cache[c.userID] = b
+		}
+		select {
+		case c.send <- b:
+		default:
+			c.kick(closeSlow)
+		}
+	}
+}
+
 // Kick closes a user's connections to a room (after they leave it).
 func (h *Hub) Kick(roomID, userID string) {
 	h.mu.Lock()

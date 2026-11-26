@@ -6,6 +6,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -107,8 +109,18 @@ func run(log *slog.Logger) error {
 		return err
 	}
 	defer db.Close()
-	if err := migrate(ctx, db, log); err != nil {
-		return fmt.Errorf("migrate: %w", err)
+	hubMigrations, err := fs.Sub(migrationsFS, "migrations")
+	if err != nil {
+		return err
+	}
+	if err := migrate(ctx, db, log, hubMigrations, "public"); err != nil {
+		return fmt.Errorf("migrate hub: %w", err)
+	}
+	// Each game keeps its tables in its own schema, with its own migrations.
+	for _, e := range engines {
+		if err := migrate(ctx, db, log, e.Migrations(), e.Schema()); err != nil {
+			return fmt.Errorf("migrate %s: %w", e.Info().ID, err)
+		}
 	}
 
 	var store *Storage
@@ -155,48 +167,45 @@ func connectDB(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	return nil, fmt.Errorf("connect to database: %w", lastErr)
 }
 
-// migrate applies every embedded migrations/*.sql file not yet recorded, in name order.
-func migrate(ctx context.Context, db *pgxpool.Pool, log *slog.Logger) error {
-	if _, err := db.Exec(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`); err != nil {
+// migrate applies every *.sql file in fsys not yet recorded in <schema>.schema_migrations,
+// in name order, each in its own transaction. Game schemas are created on first run.
+func migrate(ctx context.Context, db *pgxpool.Pool, log *slog.Logger, fsys fs.FS, schema string) error {
+	ident := pgx.Identifier{schema}.Sanitize()
+	if _, err := db.Exec(ctx, `CREATE SCHEMA IF NOT EXISTS `+ident); err != nil {
 		return err
 	}
-	entries, err := migrationsFS.ReadDir("migrations")
+	table := pgx.Identifier{schema, "schema_migrations"}.Sanitize()
+	if _, err := db.Exec(ctx, `CREATE TABLE IF NOT EXISTS `+table+` (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`); err != nil {
+		return err
+	}
+	names, err := fs.Glob(fsys, "*.sql")
 	if err != nil {
 		return err
-	}
-	names := make([]string, 0, len(entries))
-	for _, e := range entries {
-		names = append(names, e.Name())
 	}
 	sort.Strings(names)
 	for _, name := range names {
 		var exists bool
-		if err := db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE name = $1)`, name).Scan(&exists); err != nil {
+		if err := db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM `+table+` WHERE name = $1)`, name).Scan(&exists); err != nil {
 			return err
 		}
 		if exists {
 			continue
 		}
-		sql, err := migrationsFS.ReadFile("migrations/" + name)
+		sql, err := fs.ReadFile(fsys, name)
 		if err != nil {
 			return err
 		}
-		tx, err := db.Begin(ctx)
+		err = pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
+			if _, err := tx.Exec(ctx, string(sql)); err != nil {
+				return fmt.Errorf("%s: %w", name, err)
+			}
+			_, err := tx.Exec(ctx, `INSERT INTO `+table+` (name) VALUES ($1)`, name)
+			return err
+		})
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, string(sql)); err != nil {
-			_ = tx.Rollback(ctx)
-			return fmt.Errorf("%s: %w", name, err)
-		}
-		if _, err := tx.Exec(ctx, `INSERT INTO schema_migrations (name) VALUES ($1)`, name); err != nil {
-			_ = tx.Rollback(ctx)
-			return err
-		}
-		if err := tx.Commit(ctx); err != nil {
-			return err
-		}
-		log.Info("migration applied", "name", name)
+		log.Info("migration applied", "schema", schema, "name", name)
 	}
 	return nil
 }
@@ -239,6 +248,10 @@ func (a *App) routes() http.Handler {
 			r.Get("/rooms/{code}/ws", a.handleRoomSocket)
 			r.Get("/rooms/{code}/friends", a.handleRoomFriends)
 			r.Post("/rooms/{code}/invites", a.handleInviteToRoom)
+			r.Put("/rooms/{code}/options", a.handleRoomOptions)
+			r.Post("/rooms/{code}/start", a.handleStartMatch)
+			r.Post("/rooms/{code}/action", a.handleMatchAction)
+			r.Post("/rooms/{code}/stop", a.handleStopMatch)
 		})
 		r.NotFound(func(w http.ResponseWriter, r *http.Request) { writeError(w, 404, "Não encontrado.") })
 	})

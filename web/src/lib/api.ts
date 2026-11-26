@@ -39,6 +39,7 @@ export const api = {
 	get: <T>(path: string) => request<T>('GET', path),
 	post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
 	patch: <T>(path: string, body: unknown) => request<T>('PATCH', path, body),
+	put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
 	del: <T>(path: string) => request<T>('DELETE', path)
 };
 
@@ -106,7 +107,9 @@ export interface Room {
 	status: RoomStatus;
 	host_id: string;
 	created_at: string;
+	options: Record<string, unknown>;
 	players: RoomPlayer[];
+	match: unknown; // the game's view for me, or null outside a match
 }
 
 export interface RoomSummary {

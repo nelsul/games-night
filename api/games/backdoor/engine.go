@@ -1,0 +1,414 @@
+// Package backdoor is the rules engine of Backdoor, a social deduction game: the devs
+// at Cudia ship sprints while hidden hackers try to roll them back.
+//
+// The engine is pure: Setup deals a match, Apply validates and applies one player's
+// action, and View builds what one player may see. Nothing here touches the network
+// or the database, so every rule is tested in engine_test.go.
+package backdoor
+
+import (
+	"math/rand/v2"
+	"slices"
+	"time"
+)
+
+type Role string
+
+const (
+	Dev            Role = "dev"
+	Analyst        Role = "analyst"
+	ProductOwner   Role = "product_owner"
+	Hacker         Role = "hacker"
+	SocialEngineer Role = "social_engineer"
+	ZeroDay        Role = "zero_day"
+	Freelancer     Role = "freelancer"
+)
+
+// IsHacker reports whether the role plays for the hackers.
+func (r Role) IsHacker() bool {
+	switch r {
+	case Hacker, SocialEngineer, ZeroDay, Freelancer:
+		return true
+	}
+	return false
+}
+
+type Phase string
+
+const (
+	PhaseBadges   Phase = "badges"   // everyone looks at their badge
+	PhaseProposal Phase = "proposal" // the Scrum Master builds the squad
+	PhaseReview   Phase = "review"   // everyone votes on the squad
+	PhasePush     Phase = "push"     // the squad pushes in secret
+	PhaseGuess    Phase = "guess"    // the Social Engineer hunts the Analyst
+	PhaseOver     Phase = "over"
+)
+
+const (
+	MinPlayers        = 5
+	MaxPlayers        = 10
+	SpecialHackersMin = 7 // Zero-day and Freelancer need at least this many players
+	Sprints           = 5
+	ToWin             = 3 // deploys or rollbacks
+	MaxFailedMeetings = 5
+)
+
+var hackersFor = map[int]int{5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4}
+
+var squadSizes = map[int][Sprints]int{
+	5:  {2, 3, 2, 3, 3},
+	6:  {2, 3, 4, 3, 4},
+	7:  {2, 3, 3, 4, 4},
+	8:  {3, 4, 4, 5, 5},
+	9:  {3, 4, 4, 5, 5},
+	10: {3, 4, 4, 5, 5},
+}
+
+// BackdoorsNeeded is how many backdoors roll back a sprint (sprint is 0-based).
+func BackdoorsNeeded(players, sprint int) int {
+	if sprint == 3 && players >= 7 {
+		return 2
+	}
+	return 1
+}
+
+// Options are what the host sets in the lobby.
+type Options struct {
+	ProductOwner bool `json:"product_owner"`
+	ZeroDay      bool `json:"zero_day"`
+	Freelancer   bool `json:"freelancer"`
+	TimerSeconds int  `json:"timer_seconds"` // 0 (off), 60, 120 or 180
+}
+
+// RuleError is a broken rule; its message is shown to players (Portuguese).
+type RuleError struct{ Msg string }
+
+func (e *RuleError) Error() string { return e.Msg }
+
+func ruleErr(msg string) error { return &RuleError{Msg: msg} }
+
+// CheckLobby validates options while people are still joining.
+func (o Options) CheckLobby() error {
+	switch o.TimerSeconds {
+	case 0, 60, 120, 180:
+		return nil
+	}
+	return ruleErr("Escolha um timer de 1, 2 ou 3 minutos, ou desligue.")
+}
+
+// CheckStart validates options for the actual table size.
+func (o Options) CheckStart(players int) error {
+	if err := o.CheckLobby(); err != nil {
+		return err
+	}
+	if players < MinPlayers || players > MaxPlayers {
+		return ruleErr("O Backdoor é para 5 a 10 pessoas.")
+	}
+	if (o.ZeroDay || o.Freelancer) && players < SpecialHackersMin {
+		return ruleErr("Zero-day e Freelancer só entram com 7 pessoas ou mais. Desligue essas opções ou chame mais gente.")
+	}
+	return nil
+}
+
+type Proposal struct {
+	Sprint   int             `json:"sprint"`
+	Leader   string          `json:"leader"`
+	Squad    []string        `json:"squad"`
+	Votes    map[string]bool `json:"votes"` // true = approve
+	Approved bool            `json:"approved"`
+}
+
+type SprintResult struct {
+	Squad     []string `json:"squad"`
+	Backdoors int      `json:"backdoors"`
+	Rollback  bool     `json:"rollback"`
+}
+
+// State is the whole match, stored as JSON. Pushes and roles are secret: only View
+// decides who sees what.
+type State struct {
+	Players        []string        `json:"players"` // seat order
+	Roles          map[string]Role `json:"roles"`
+	Options        Options         `json:"options"`
+	Phase          Phase           `json:"phase"`
+	Sprint         int             `json:"sprint"` // 0-based
+	Leader         int             `json:"leader"` // index into Players: the Scrum Master
+	FailedMeetings int             `json:"failed_meetings"`
+	Ready          map[string]bool `json:"ready"`
+	Selection      []string        `json:"selection"`
+	Votes          map[string]bool `json:"votes"`
+	Pushes         map[string]bool `json:"pushes"` // true = backdoor
+	Proposals      []Proposal      `json:"proposals"`
+	Results        []SprintResult  `json:"results"`
+	Guess          string          `json:"guess,omitempty"`
+	Winner         string          `json:"winner,omitempty"` // devs or hackers
+	Reason         string          `json:"reason,omitempty"` // rollbacks, meetings, guess, guess_missed
+	PhaseStartedAt time.Time       `json:"phase_started_at"`
+}
+
+// Setup deals roles at random and picks a random first Scrum Master.
+func Setup(players []string, opts Options, rng *rand.Rand, now time.Time) (*State, error) {
+	if err := opts.CheckStart(len(players)); err != nil {
+		return nil, err
+	}
+	n := len(players)
+	hackerRoles := []Role{SocialEngineer}
+	if opts.ZeroDay {
+		hackerRoles = append(hackerRoles, ZeroDay)
+	}
+	if opts.Freelancer {
+		hackerRoles = append(hackerRoles, Freelancer)
+	}
+	for len(hackerRoles) < hackersFor[n] {
+		hackerRoles = append(hackerRoles, Hacker)
+	}
+	devRoles := []Role{Analyst}
+	if opts.ProductOwner {
+		devRoles = append(devRoles, ProductOwner)
+	}
+	for len(devRoles) < n-hackersFor[n] {
+		devRoles = append(devRoles, Dev)
+	}
+	deck := append(hackerRoles, devRoles...)
+	rng.Shuffle(len(deck), func(i, j int) { deck[i], deck[j] = deck[j], deck[i] })
+
+	s := &State{
+		Players: slices.Clone(players),
+		Roles:   map[string]Role{},
+		Options: opts,
+		Phase:   PhaseBadges,
+		Leader:  rng.IntN(n),
+		Ready:   map[string]bool{},
+		Votes:   map[string]bool{},
+		Pushes:  map[string]bool{},
+	}
+	for i, p := range players {
+		s.Roles[p] = deck[i]
+	}
+	s.enter(PhaseBadges, now)
+	return s, nil
+}
+
+func (s *State) enter(p Phase, now time.Time) {
+	s.Phase = p
+	s.PhaseStartedAt = now
+}
+
+// SquadSize is how many people the current sprint needs.
+func (s *State) SquadSize() int { return squadSizes[len(s.Players)][s.Sprint] }
+
+func (s *State) leaderID() string { return s.Players[s.Leader] }
+
+func (s *State) deploys() int   { return s.count(false) }
+func (s *State) rollbacks() int { return s.count(true) }
+
+func (s *State) count(rollback bool) int {
+	n := 0
+	for _, r := range s.Results {
+		if r.Rollback == rollback {
+			n++
+		}
+	}
+	return n
+}
+
+func (s *State) socialEngineer() string {
+	for _, p := range s.Players {
+		if s.Roles[p] == SocialEngineer {
+			return p
+		}
+	}
+	return ""
+}
+
+func (s *State) nextLeader() { s.Leader = (s.Leader + 1) % len(s.Players) }
+
+func (s *State) finish(winner, reason string, now time.Time) {
+	s.Winner, s.Reason = winner, reason
+	s.enter(PhaseOver, now)
+}
+
+// Action is one thing a player does. Only the fields its Type needs are set.
+type Action struct {
+	Type     string   `json:"type"` // ready, select, propose, vote, push, guess
+	Squad    []string `json:"squad,omitempty"`
+	Approve  *bool    `json:"approve,omitempty"`
+	Backdoor *bool    `json:"backdoor,omitempty"`
+	Target   string   `json:"target,omitempty"`
+}
+
+// Apply checks an action against the rules and applies it. On error the state is unchanged.
+func Apply(s *State, player string, a Action, now time.Time) error {
+	if _, ok := s.Roles[player]; !ok {
+		return ruleErr("Você não está nessa partida.")
+	}
+	switch a.Type {
+	case "ready":
+		return s.ready(player, now)
+	case "select":
+		return s.selectSquad(player, a.Squad)
+	case "propose":
+		return s.propose(player, now)
+	case "vote":
+		return s.vote(player, a.Approve, now)
+	case "push":
+		return s.push(player, a.Backdoor, now)
+	case "guess":
+		return s.guess(player, a.Target, now)
+	}
+	return ruleErr("Ação desconhecida.")
+}
+
+func (s *State) ready(player string, now time.Time) error {
+	if s.Phase != PhaseBadges {
+		return ruleErr("A partida já começou.")
+	}
+	s.Ready[player] = true
+	if len(s.Ready) == len(s.Players) {
+		s.enter(PhaseProposal, now)
+	}
+	return nil
+}
+
+func (s *State) selectSquad(player string, squad []string) error {
+	if s.Phase != PhaseProposal {
+		return ruleErr("Agora não é hora de montar o squad.")
+	}
+	if player != s.leaderID() {
+		return ruleErr("Só o Scrum Master monta o squad.")
+	}
+	if len(squad) > s.SquadSize() {
+		return ruleErr("Esse squad tem gente demais.")
+	}
+	seen := map[string]bool{}
+	for _, p := range squad {
+		if _, ok := s.Roles[p]; !ok || seen[p] {
+			return ruleErr("Escolha pessoas da partida, sem repetir.")
+		}
+		seen[p] = true
+	}
+	s.Selection = slices.Clone(squad)
+	return nil
+}
+
+func (s *State) propose(player string, now time.Time) error {
+	if s.Phase != PhaseProposal {
+		return ruleErr("Agora não é hora de abrir o PR.")
+	}
+	if player != s.leaderID() {
+		return ruleErr("Só o Scrum Master abre o PR.")
+	}
+	if len(s.Selection) != s.SquadSize() {
+		return ruleErr("Escolha exatamente quem vai no squad.")
+	}
+	s.Votes = map[string]bool{}
+	s.enter(PhaseReview, now)
+	return nil
+}
+
+func (s *State) vote(player string, approve *bool, now time.Time) error {
+	if s.Phase != PhaseReview {
+		return ruleErr("Agora não é hora de votar.")
+	}
+	if approve == nil {
+		return ruleErr("Escolha aprovar ou pedir mudanças.")
+	}
+	if _, done := s.Votes[player]; done {
+		return ruleErr("Você já votou.")
+	}
+	s.Votes[player] = *approve
+	if len(s.Votes) < len(s.Players) {
+		return nil
+	}
+	yes := 0
+	for _, v := range s.Votes {
+		if v {
+			yes++
+		}
+	}
+	approved := yes*2 > len(s.Players)
+	s.Proposals = append(s.Proposals, Proposal{
+		Sprint: s.Sprint, Leader: s.leaderID(), Squad: slices.Clone(s.Selection),
+		Votes: s.Votes, Approved: approved,
+	})
+	s.Votes = map[string]bool{}
+	if approved {
+		s.FailedMeetings = 0
+		s.Pushes = map[string]bool{}
+		s.enter(PhasePush, now)
+		return nil
+	}
+	s.FailedMeetings++
+	if s.FailedMeetings >= MaxFailedMeetings {
+		s.finish("hackers", "meetings", now)
+		return nil
+	}
+	s.nextLeader()
+	s.Selection = nil
+	s.enter(PhaseProposal, now)
+	return nil
+}
+
+func (s *State) push(player string, backdoor *bool, now time.Time) error {
+	if s.Phase != PhasePush {
+		return ruleErr("Agora não é hora do push.")
+	}
+	if !slices.Contains(s.Selection, player) {
+		return ruleErr("Só quem está no squad faz push.")
+	}
+	if backdoor == nil {
+		return ruleErr("Escolha o seu push.")
+	}
+	if *backdoor && !s.Roles[player].IsHacker() {
+		return ruleErr("Devs só fazem push limpo.")
+	}
+	if _, done := s.Pushes[player]; done {
+		return ruleErr("Você já fez o push.")
+	}
+	s.Pushes[player] = *backdoor
+	if len(s.Pushes) < len(s.Selection) {
+		return nil
+	}
+	backdoors := 0
+	for _, b := range s.Pushes {
+		if b {
+			backdoors++
+		}
+	}
+	s.Results = append(s.Results, SprintResult{
+		Squad: slices.Clone(s.Selection), Backdoors: backdoors,
+		Rollback: backdoors >= BackdoorsNeeded(len(s.Players), s.Sprint),
+	})
+	s.Pushes = map[string]bool{}
+	s.Selection = nil
+	switch {
+	case s.rollbacks() >= ToWin:
+		s.finish("hackers", "rollbacks", now)
+	case s.deploys() >= ToWin:
+		s.enter(PhaseGuess, now)
+	default:
+		s.Sprint++
+		s.nextLeader()
+		s.enter(PhaseProposal, now)
+	}
+	return nil
+}
+
+func (s *State) guess(player, target string, now time.Time) error {
+	if s.Phase != PhaseGuess {
+		return ruleErr("Agora não é hora do palpite.")
+	}
+	if s.Roles[player] != SocialEngineer {
+		return ruleErr("Só a Engenharia Social dá o palpite.")
+	}
+	if _, ok := s.Roles[target]; !ok || target == player {
+		return ruleErr("Escolha outra pessoa da partida.")
+	}
+	s.Guess = target
+	if s.Roles[target] == Analyst {
+		s.finish("hackers", "guess", now)
+	} else {
+		s.finish("devs", "guess_missed", now)
+	}
+	return nil
+}

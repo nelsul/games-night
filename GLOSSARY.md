@@ -22,14 +22,17 @@ Terms used in code, issues and PRs. The site shows the Portuguese word in parent
 ## Backdoor
 
 - **Cudia**: the made-up software company the players work for. **Samgung**: its made-up client.
-- **Devs** (*Time Devs*): the majority team. Wins by delivering 3 sprints.
-- **Hackers** (*Time Hackers*): the hidden minority, about a third of the table. They know each other. Win with 3 hacked sprints or 5 failed meetings in a row.
+- **Devs** (*Time Devs*): the majority team. Wins by delivering 3 sprints, unless the Social Engineer then finds the Security Analyst.
+- **Hackers** (*Time Hackers*): the hidden minority, about a third of the table. They know each other (except the Freelancer). Win with 3 rollbacks, 5 failed meetings in a row, or the Social Engineer's correct guess.
 - **Badge** (*crachá*): a player's secret role card.
-- **Roles**: **Dev**; **Security Analyst** (*Analista de Segurança*, a dev who knows the hackers); **Hacker**; **Social Engineer** (*Engenharia Social*, a hacker who gets one last guess at the Security Analyst if the devs win).
-- **Sprint**: one of up to 5 rounds. Ends **delivered** (*deploy*) or **hacked** (*invadido*).
-- **Tech lead** (*tech lead da vez*): the player proposing the squad this round. Rotates around the table.
-- **Squad**: the players the tech lead proposes for a sprint, shown as a pull request.
+- **Roles**, always in play: **Dev**; **Security Analyst** (*Analista de Segurança*, a dev who sees the hackers except the Zero-day); **Hacker**; **Social Engineer** (*Engenharia Social*, a hacker who gets one last guess at the Security Analyst if the devs ship 3 sprints).
+- **Optional roles** (host options): **Product Owner** (a dev who sees the Security Analyst, and the Zero-day as a second candidate); **Zero-day** (a hacker the Security Analyst can't see, 7+ players); **Freelancer** (a hacker who doesn't know the other hackers and whom they don't know, 7+ players). Special hackers replace regular ones.
+- **Sprint**: one of up to 5 rounds. Ends **Deploy** or **Rollback**. With 7+ players, sprint 4 needs 2 backdoors to roll back.
+- **Scrum Master**: the player proposing the squad this round. Rotates around the table.
+- **Squad**: the players the Scrum Master proposes for a sprint, shown as a pull request.
+- **Discussion timer**: optional advisory countdown while the Scrum Master builds the squad.
 - **Review**: everyone's open vote on the squad: **approve** (*Approve*/LGTM) or **request changes**.
 - **Failed meeting** (*reunião sem decisão*): a squad that was not approved. Five in a row and the hackers win.
-- **Push**: each squad member's secret choice: a clean `git push`, or (hackers only) `git push --backdoor`. One backdoor hacks the sprint.
+- **Push**: each squad member's secret choice: a clean `git push`, or (hackers only) `git push --backdoor`. One backdoor rolls the sprint back.
+- **Match** data lives in the game's own Postgres schema (`backdoor.matches`, `backdoor.actions`), never in the hub's tables.
 - **Post-mortem**: the end screen that reveals every badge.
