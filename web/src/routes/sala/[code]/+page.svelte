@@ -5,6 +5,7 @@
 	import QRCode from 'qrcode';
 	import { api, ApiError, type ChatMessage, type InvitableFriend, type Room } from '$lib/api';
 	import RoomChat from '$lib/components/RoomChat.svelte';
+	import PlayerCard from '$lib/components/PlayerCard.svelte';
 	import { flip } from 'svelte/animate';
 	import { scale } from 'svelte/transition';
 	import { haptic, ms, sound } from '$lib/feel.svelte';
@@ -119,6 +120,10 @@
 		toastTimer = setTimeout(() => (toast = null), 3500);
 	}
 
+	// The player card: tap someone to see them and ask to be friends.
+	let cardFor = $state<string | null>(null);
+	const cardOnline = $derived(cardFor ? room?.players.find((p) => p.id === cardFor)?.online : undefined);
+
 	function openChat() {
 		chatOpen = true;
 		unread = 0;
@@ -200,7 +205,7 @@
 
 {#if room && match}
 	{#if game}
-		<game.Match {room} {match} {me} {isHost} onroom={(r) => (room = r)} onchat={openChat} onleave={leave} {unread} />
+		<game.Match {room} {match} {me} {isHost} onroom={(r) => (room = r)} onchat={openChat} onleave={leave} {unread} onplayer={(id) => (cardFor = id)} />
 	{:else}
 		<main class="page"><p class="muted center">Esse jogo não está disponível nesta versão do site. Atualize a página.</p></main>
 	{/if}
@@ -243,7 +248,9 @@
 			{#each room.players as p (p.id)}
 				<li class:offline={!p.online} animate:flip={{ duration: ms(250) }} in:scale={{ start: 0.5, duration: ms(300) }}>
 					<span class="tile">
-						<Avatar user={p} size={96} radius={6} online={p.online} />
+						<button class="who" onclick={() => (cardFor = p.id)} aria-label="Ver {p.id === me ? 'seu perfil' : p.name}">
+							<Avatar user={p} size={96} radius={6} online={p.online} />
+						</button>
 						{#if p.is_host}<span class="host">HOST</span>{/if}
 						{#if p.is_bot}<span class="host bot">BOT</span>{/if}
 						{#if p.is_bot && isHost && room.status === 'lobby'}
@@ -370,6 +377,10 @@
 	<button class="toast" onclick={openChat}>
 		<strong>{toast.user.name}:</strong> {toast.body}
 	</button>
+{/if}
+
+{#if cardFor}
+	<PlayerCard userId={cardFor} online={cardOnline} onclose={() => (cardFor = null)} />
 {/if}
 
 {#if chatOpen && room}
@@ -521,6 +532,14 @@
 		gap: 8px;
 		min-width: 0;
 	}
+	.who {
+		border: none;
+		background: none;
+		padding: 0;
+		cursor: pointer;
+		border-radius: 6px;
+		display: flex;
+	}
 	.host.bot {
 		background: #2f80ed;
 		right: auto;
@@ -529,7 +548,7 @@
 	.remove {
 		position: absolute;
 		bottom: -8px;
-		right: -8px;
+		left: -8px; /* the online dot sits bottom-right */
 		width: 30px;
 		height: 30px;
 		border-radius: 50%;

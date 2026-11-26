@@ -38,6 +38,8 @@ export interface MatchProps {
 	onchat: () => void;
 	onleave: () => void;
 	unread?: number;
+	/** Opens the hub's player card (profile and friend request) for someone in the room. */
+	onplayer?: (userId: string) => void;
 }
 
 export interface LobbyOptionsProps {

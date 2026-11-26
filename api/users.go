@@ -214,3 +214,35 @@ func (a *App) handleDeleteAvatar(w http.ResponseWriter, r *http.Request) {
 	a.notifyUserRooms(ctx, uid)
 	a.handleMe(w, r)
 }
+
+// handleGetUser is someone's card: who they are and how they relate to you (for the
+// player card in a room). Only what everyone may see; bots have no friendship.
+func (a *App) handleGetUser(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r, "id")
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	var name string
+	var handle, avatar *string
+	var isBot bool
+	err := a.db.QueryRow(ctx, `SELECT name, handle, avatar_key, is_bot FROM users WHERE id = $1`, id).Scan(&name, &handle, &avatar, &isBot)
+	if isNoRows(err) {
+		writeError(w, 404, "Não encontramos essa pessoa.")
+		return
+	} else if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	out := struct {
+		UserWithRelation
+		IsBot bool `json:"is_bot"`
+	}{UserWithRelation: UserWithRelation{PublicUser: a.publicUser(ctx, id, name, handle, avatar), Relation: "none"}, IsBot: isBot}
+	if !isBot {
+		if out.Relation, err = a.relation(ctx, currentUser(ctx), id); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	}
+	writeJSON(w, 200, out)
+}
