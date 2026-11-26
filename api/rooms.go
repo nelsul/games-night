@@ -75,7 +75,7 @@ type roomRow struct {
 
 // openRoom finds a room that is still in the lobby or being played.
 func (a *App) openRoom(ctx context.Context, q pgx.Tx, code string, forUpdate bool) (roomRow, error) {
-	sql := `SELECT id, code, game, status, host_id FROM rooms WHERE code = $1 AND status IN ('lobby', 'playing')`
+	sql := `SELECT id, code, game, status, host_id FROM rooms WHERE code = $1 AND status IN ('lobby', 'playing', 'finished')`
 	if forUpdate {
 		sql += ` FOR UPDATE`
 	}
@@ -173,7 +173,7 @@ func (a *App) broadcastRoom(roomID string) {
 func (a *App) notifyUserRooms(ctx context.Context, userID string) {
 	rows, err := a.db.Query(ctx, `
 		SELECT r.id FROM rooms r JOIN room_players p ON p.room_id = r.id
-		WHERE p.user_id = $1 AND r.status IN ('lobby', 'playing')`, userID)
+		WHERE p.user_id = $1 AND r.status IN ('lobby', 'playing', 'finished')`, userID)
 	if err != nil {
 		return
 	}
@@ -261,7 +261,7 @@ func (a *App) handleListRooms(w http.ResponseWriter, r *http.Request) {
 		SELECT r.code, r.game, r.status, r.host_id = $1, r.updated_at,
 			(SELECT count(*) FROM room_players x WHERE x.room_id = r.id)
 		FROM rooms r JOIN room_players p ON p.room_id = r.id AND p.user_id = $1
-		WHERE r.status IN ('lobby', 'playing')
+		WHERE r.status IN ('lobby', 'playing', 'finished')
 		ORDER BY r.updated_at DESC LIMIT 20`, uid)
 	if err != nil {
 		a.serverError(w, r, err)

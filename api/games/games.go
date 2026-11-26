@@ -40,6 +40,8 @@ type Engine interface {
 	Act(ctx context.Context, tx pgx.Tx, roomID, userID string, action json.RawMessage, now time.Time) error
 	// View is what userID may see of the room's current match; nil when there is none.
 	View(ctx context.Context, q Querier, roomID, userID string) (any, error)
+	// Over reports whether the room's current match has ended.
+	Over(ctx context.Context, q Querier, roomID string) (bool, error)
 	// Stop closes the room's current match (ended early, or the table plays again).
 	Stop(ctx context.Context, tx pgx.Tx, roomID string) error
 }

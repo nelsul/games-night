@@ -3,8 +3,14 @@
 	let {
 		user,
 		size = 40,
-		radius = 4
-	}: { user: { id: string; name: string; avatar_url: string; is_bot?: boolean }; size?: number; radius?: number } = $props();
+		radius = 4,
+		online
+	}: {
+		user: { id: string; name: string; avatar_url: string; is_bot?: boolean };
+		size?: number;
+		radius?: number;
+		online?: boolean; // when set, shows a presence dot
+	} = $props();
 
 	const colors = ['#2F80ED', '#7B4FD1', '#E8A317', '#2E9E5B', '#D94F8A', '#1FA3A3', '#C25B2E', '#5B6CF0'];
 	const color = $derived(colors[[...user.id].reduce((n, c) => n + c.charCodeAt(0), 0) % colors.length]);
@@ -12,6 +18,7 @@
 	const initial = $derived((user.name || '?').trim().charAt(0).toUpperCase());
 </script>
 
+<span class="av" style="width: {size}px; height: {size}px">
 {#if user.is_bot}
 	<svg
 		viewBox="0 0 48 48"
@@ -47,3 +54,30 @@
 		)}px; flex-shrink: 0">{initial}</span
 	>
 {/if}
+{#if online !== undefined}
+	<span class="dot" class:on={online} style="width: {Math.max(8, Math.round(size * 0.26))}px; height: {Math.max(8, Math.round(size * 0.26))}px"
+		><span class="sr-only">{online ? 'online' : 'offline'}</span></span
+	>
+{/if}
+</span>
+
+<style>
+	.av {
+		position: relative;
+		display: inline-flex;
+		flex-shrink: 0;
+	}
+	.dot {
+		position: absolute;
+		right: -2px;
+		bottom: -2px;
+		border-radius: 50%;
+		background: #6e7681;
+		border: 2px solid #141414;
+		box-sizing: content-box;
+	}
+	.dot.on {
+		background: #3fb950;
+		animation: gn-glow 2.4s ease-in-out infinite;
+	}
+</style>
