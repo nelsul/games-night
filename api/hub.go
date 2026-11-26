@@ -106,20 +106,32 @@ const (
 )
 
 func (a *App) handleRoomSocket(w http.ResponseWriter, r *http.Request) {
-	rr, ok := a.roomFromPath(w, r)
+	rr, ok := a.memberRoom(w, r)
 	if !ok {
 		return
 	}
+	a.serveSocket(w, r, rr.ID, func() { a.broadcastRoom(rr.ID) })
+}
+
+// userChannel is the hub key for one person's own socket (friend requests, invites).
+func userChannel(userID string) string { return "user:" + userID }
+
+// handleUserSocket tells a signed-in person when their inbox changed; the site then refetches it.
+func (a *App) handleUserSocket(w http.ResponseWriter, r *http.Request) {
 	uid := currentUser(r.Context())
-	member, err := a.isMember(r.Context(), rr.ID, uid)
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	if !member {
-		writeError(w, 403, "Entre na sala primeiro.")
-		return
-	}
+	a.serveSocket(w, r, userChannel(uid), func() { a.notifyUser(uid) })
+}
+
+// notifyUser pokes every open tab of a person to refresh their inbox.
+func (a *App) notifyUser(userID string) {
+	a.hub.Send(userChannel(userID), map[string]string{"type": "inbox"})
+}
+
+// serveSocket upgrades the request and keeps a client in the hub under key until it
+// disconnects. changed runs after the client joins and after it leaves, so the others
+// (and the client itself, on joining) get a fresh snapshot.
+func (a *App) serveSocket(w http.ResponseWriter, r *http.Request, key string, changed func()) {
+	uid := currentUser(r.Context())
 	opts := &websocket.AcceptOptions{}
 	if u, err := url.Parse(a.cfg.PublicURL); err == nil && u.Host != "" {
 		opts.OriginPatterns = []string{u.Host}
@@ -131,12 +143,12 @@ func (a *App) handleRoomSocket(w http.ResponseWriter, r *http.Request) {
 	defer conn.CloseNow()
 
 	c := &client{userID: uid, send: make(chan []byte, 16), kicked: make(chan struct{})}
-	a.hub.add(rr.ID, c)
+	a.hub.add(key, c)
 	defer func() {
-		a.hub.remove(rr.ID, c)
-		go a.broadcastRoom(rr.ID) // the others see this person go offline
+		a.hub.remove(key, c)
+		go changed()
 	}()
-	a.broadcastRoom(rr.ID) // the snapshot for this client, and "online" for the others
+	changed()
 
 	ctx := conn.CloseRead(context.Background()) // clients only listen; this notices them closing
 	ping := time.NewTicker(pingEvery)

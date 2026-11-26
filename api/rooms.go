@@ -101,7 +101,7 @@ func (a *App) roomView(ctx context.Context, roomID string) (RoomView, error) {
 	}
 	v.Game, _ = findGame(gameID)
 	rows, err := a.db.Query(ctx, `
-		SELECT u.id, u.name, u.avatar_key FROM room_players p JOIN users u ON u.id = p.user_id
+		SELECT u.id, u.name, u.handle, u.avatar_key FROM room_players p JOIN users u ON u.id = p.user_id
 		WHERE p.room_id = $1 ORDER BY p.joined_at, u.id`, roomID)
 	if err != nil {
 		return v, err
@@ -111,11 +111,12 @@ func (a *App) roomView(ctx context.Context, roomID string) (RoomView, error) {
 	v.Players = []RoomPlayer{}
 	for rows.Next() {
 		var p RoomPlayer
-		var avatar *string
-		if err := rows.Scan(&p.ID, &p.Name, &avatar); err != nil {
+		var id, name string
+		var handle, avatar *string
+		if err := rows.Scan(&id, &name, &handle, &avatar); err != nil {
 			return v, err
 		}
-		p.AvatarURL = a.store.URL(ctx, avatar)
+		p.PublicUser = a.publicUser(ctx, id, name, handle, avatar)
 		p.IsHost = p.ID == v.HostID
 		p.Online = online[p.ID]
 		v.Players = append(v.Players, p)
@@ -323,6 +324,11 @@ func (a *App) handleJoinRoom(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if _, err := tx.Exec(ctx, `UPDATE rooms SET updated_at = now() WHERE id = $1`, rr.ID); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		// Joining answers any invite to this room.
+		if _, err := tx.Exec(ctx, `UPDATE room_invites SET status = 'accepted' WHERE room_id = $1 AND to_id = $2 AND status = 'pending'`, rr.ID, uid); err != nil {
 			a.serverError(w, r, err)
 			return
 		}

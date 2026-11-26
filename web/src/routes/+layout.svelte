@@ -3,14 +3,25 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { loadMe, session } from '$lib/session.svelte';
+	import { refreshInbox, startInbox, stopInbox } from '$lib/inbox.svelte';
 	import TabBar from '$lib/components/TabBar.svelte';
 
 	let { children } = $props();
 
 	const publicPaths = ['/entrar'];
-	const tabPaths = ['/', '/salas', '/perfil'];
+	const tabPaths = ['/', '/salas', '/amigos', '/perfil'];
 
 	let ready = $state(false);
+
+	// Friend requests and invites follow the person around the site while signed in.
+	$effect(() => {
+		if (session.me?.onboarded) {
+			startInbox();
+			refreshInbox();
+		} else {
+			stopInbox();
+		}
+	});
 
 	$effect(() => {
 		const path = page.url.pathname;

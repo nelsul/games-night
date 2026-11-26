@@ -15,8 +15,10 @@ More games will plug into the same hub: rooms, lobby, profiles and live updates 
 ## What's here today
 
 - Sign in with a code sent by email (no passwords)
-- Profile with a name and a photo
-- Create a room for a game, join it by code, link or QR code
+- Profile with a name, a unique @handle and a photo
+- Friends: search people by @, send and answer friend requests
+- Create a room for a game; friends join by invite, code, link or QR code
+- Live notifications of friend requests and room invites
 - Live lobby: who is in the room and who is online, updated over a WebSocket
 - The Backdoor game page with its characters and rules
 

@@ -9,6 +9,8 @@
 	import Logo from '$lib/components/Logo.svelte';
 	import KeyArt from '$lib/art/KeyArt.svelte';
 	import RoomCard from '$lib/components/RoomCard.svelte';
+	import { inbox, refreshInbox } from '$lib/inbox.svelte';
+	import { goto } from '$app/navigation';
 
 	let rooms = $state<RoomSummary[]>([]);
 	let error = $state('');
@@ -17,6 +19,11 @@
 	onMount(async () => {
 		rooms = await api.get<RoomSummary[]>('/rooms').catch(() => []);
 	});
+
+	async function decline(id: string) {
+		await api.post(`/invites/${id}/decline`).catch(() => {});
+		await refreshInbox();
+	}
 
 	async function create() {
 		error = '';
@@ -39,6 +46,26 @@
 			<a href="/perfil" aria-label="Seu perfil"><Avatar user={session.me} size={32} /></a>
 		{/if}
 	</header>
+
+	{#if inbox.invites.length}
+		<section class="invites" aria-label="Convites">
+			{#each inbox.invites as inv (inv.id)}
+				<div class="invite">
+					<Avatar user={inv.from} size={44} />
+					<span class="invite-text">
+						<strong>{inv.from.name} te chamou para {inv.game.name}</strong>
+						<span class="muted">Sala {inv.code} · {inv.players} {inv.players === 1 ? 'pessoa' : 'pessoas'}</span>
+					</span>
+					<span class="invite-actions">
+						<button class="btn btn-ghost small" onclick={() => decline(inv.id)} aria-label="Recusar convite de {inv.from.name}">
+							<Icon name="close" size={18} />
+						</button>
+						<button class="btn btn-primary small" onclick={() => goto(`/sala/${inv.code}`)}>Entrar</button>
+					</span>
+				</div>
+			{/each}
+		</section>
+	{/if}
 
 	<section class="billboard" aria-label="Destaque">
 		<a href="/jogos/backdoor" aria-label="Ver o Backdoor" class="art"><KeyArt /></a>
@@ -100,6 +127,42 @@
 		align-items: center;
 		justify-content: flex-end;
 		text-decoration: none;
+	}
+	.invites {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.invite {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 10px 12px;
+		border-radius: var(--radius);
+		background: var(--surface);
+		border-left: 3px solid var(--brand);
+	}
+	.invite-text {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		font-size: 13px;
+	}
+	.invite-text strong {
+		font-size: 14px;
+		line-height: 1.3;
+	}
+	.invite-actions {
+		display: flex;
+		gap: 6px;
+	}
+	.small {
+		height: 40px;
+		padding: 0 12px;
+		font-size: 14px;
+		min-width: 44px;
 	}
 	.billboard {
 		border-radius: 12px;

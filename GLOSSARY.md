@@ -4,6 +4,10 @@ Terms used in code, issues and PRs. The site shows the Portuguese word in parent
 
 ## Hub
 
+- **Handle** (*@*): a person's unique name for being found, 3 to 20 lower-case letters, digits, `.` or `_`. Required before using the site.
+- **Friend** (*amigo*): someone who accepted your **friend request** (*pedido de amizade*), or whose request you accepted. Only friends can be invited to rooms.
+- **Invite** (*convite*): a friend asking you to join their room. Joining the room accepts it; it disappears once the match starts.
+- **Inbox**: your pending friend requests and invites. The site keeps it fresh over your own WebSocket (`/api/me/ws`), which only says "refetch".
 - **Hub**: the part of Games Night shared by every game: sign-in, profiles, rooms, the lobby and live updates.
 - **Game**: one entry in the catalog (`api/games.go`), like Backdoor. Has a name and a minimum and maximum number of players.
 - **Room** (*sala*): where a group meets to play one game. Identified by its **code**.
