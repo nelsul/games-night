@@ -14,7 +14,10 @@
 		| 'logout'
 		| 'camera'
 		| 'check'
-		| 'door';
+		| 'door'
+		| 'friends'
+		| 'userplus'
+		| 'trash';
 	let { name, size = 24, label }: { name: Name; size?: number; label?: string } = $props();
 </script>
 
@@ -44,6 +47,9 @@
 	{:else if name === 'logout'}<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11" />
 	{:else if name === 'camera'}<path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" />
 	{:else if name === 'check'}<path d="M5 12l5 5L20 7" />
+	{:else if name === 'friends'}<circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+	{:else if name === 'userplus'}<circle cx="10" cy="8" r="4" /><path d="M3 21c0-4 3.1-7 7-7 1.8 0 3.4.6 4.6 1.6M19 14v6M16 17h6" />
+	{:else if name === 'trash'}<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
 	{:else if name === 'door'}<path d="M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17M3 21h18M14 12h.01" />
 	{/if}
 </svg>

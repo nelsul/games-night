@@ -45,7 +45,38 @@ export const api = {
 export interface PublicUser {
 	id: string;
 	name: string;
+	handle: string;
 	avatar_url: string;
+}
+
+export type Relation = 'self' | 'friend' | 'request_sent' | 'request_received' | 'none';
+
+export interface UserWithRelation extends PublicUser {
+	relation: Relation;
+}
+
+export interface FriendRequest {
+	id: string;
+	user: PublicUser;
+	created_at: string;
+}
+
+export interface Invite {
+	id: string;
+	code: string;
+	game: Game;
+	from: PublicUser;
+	players: number;
+	created_at: string;
+}
+
+export interface Inbox {
+	requests: number;
+	invites: Invite[];
+}
+
+export interface InvitableFriend extends PublicUser {
+	state: 'in_room' | 'invited' | 'none';
 }
 
 export interface Me extends PublicUser {

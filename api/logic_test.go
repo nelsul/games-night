@@ -71,3 +71,24 @@ func TestNormalizeEmail(t *testing.T) {
 		}
 	}
 }
+
+func TestCleanHandle(t *testing.T) {
+	ok := map[string]string{"@Nelsul": "nelsul", " ana.paula_2 ": "ana.paula_2", "abc": "abc"}
+	for in, want := range ok {
+		if got, valid := cleanHandle(in); !valid || got != want {
+			t.Errorf("cleanHandle(%q) = %q, %v; want %q", in, got, valid, want)
+		}
+	}
+	for _, bad := range []string{"ab", "ana paula", "ana-paula", "joão", strings.Repeat("a", 21), "@"} {
+		if _, valid := cleanHandle(bad); valid {
+			t.Errorf("accepted %q", bad)
+		}
+	}
+}
+
+func TestOrderedPair(t *testing.T) {
+	a, b := orderedPair("b", "a")
+	if a != "a" || b != "b" {
+		t.Fatalf("got %q, %q", a, b)
+	}
+}

@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { onDestroy, onMount } from 'svelte';
 	import QRCode from 'qrcode';
-	import { api, ApiError, type Room } from '$lib/api';
+	import { api, ApiError, type InvitableFriend, type Room } from '$lib/api';
 	import { connectRoom, type RoomSocket } from '$lib/room-socket';
 	import { session } from '$lib/session.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -18,6 +18,9 @@
 	let showQR = $state(false);
 	let qr = $state('');
 	let copied = $state(false);
+	let showInvite = $state(false);
+	let friends = $state<InvitableFriend[] | null>(null);
+	let inviteError = $state('');
 	let socket: RoomSocket | null = null;
 
 	const me = $derived(session.me?.id ?? '');
@@ -50,7 +53,23 @@
 		showQR = true;
 	}
 
-	async function invite() {
+	async function openInvite() {
+		showInvite = true;
+		inviteError = '';
+		friends = await api.get<InvitableFriend[]>(`/rooms/${code}/friends`).catch(() => []);
+	}
+
+	async function inviteFriend(f: InvitableFriend) {
+		inviteError = '';
+		try {
+			const r = await api.post<{ state: InvitableFriend['state'] }>(`/rooms/${code}/invites`, { user_id: f.id });
+			f.state = r.state;
+		} catch (err) {
+			inviteError = err instanceof ApiError ? err.message : 'Algo deu errado.';
+		}
+	}
+
+	async function shareLink() {
 		const data = { title: 'Games Night', text: `Bora jogar ${room?.game.name ?? ''}? Sala ${code}`, url: link };
 		if (navigator.share) {
 			try {
@@ -120,10 +139,10 @@
 			{/each}
 			{#if !full}
 				<li>
-					<button class="tile invite" onclick={invite} aria-label="Convidar">
+					<button class="tile invite" onclick={openInvite} aria-label="Convidar">
 						<Icon name="plus" size={40} />
 					</button>
-					<span class="name">{copied ? 'Link copiado' : 'Convidar'}</span>
+					<span class="name">Convidar</span>
 				</li>
 			{/if}
 		</ul>
@@ -149,6 +168,40 @@
 		</div>
 	{/if}
 </main>
+
+{#if showInvite}
+	<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="invite-title">
+		<div class="sheet-card invite-card">
+			<h2 id="invite-title">Convidar amigos</h2>
+			{#if friends === null}
+				<p class="muted">Carregando…</p>
+			{:else if friends.length === 0}
+				<p class="muted">Você ainda não tem amigos aqui. <a href="/amigos">Busque a galera pelo @</a> ou mande o link da sala.</p>
+			{:else}
+				<ul class="friends">
+					{#each friends as f (f.id)}
+						<li>
+							<Avatar user={f} size={40} />
+							<span class="who"><strong>{f.name}</strong><span class="muted">@{f.handle}</span></span>
+							{#if f.state === 'in_room'}
+								<span class="tag">Na sala</span>
+							{:else if f.state === 'invited'}
+								<span class="tag"><Icon name="check" size={16} />Convidado</span>
+							{:else}
+								<button class="btn btn-primary small" onclick={() => inviteFriend(f)}>Convidar</button>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			{/if}
+			{#if inviteError}<p class="error" role="alert">{inviteError}</p>{/if}
+			<button class="btn btn-ghost btn-block" onclick={shareLink}>
+				<Icon name="share" size={18} />{copied ? 'Link copiado' : 'Mandar o link'}
+			</button>
+			<button class="btn btn-primary btn-block" onclick={() => (showInvite = false)}>Pronto</button>
+		</div>
+	</div>
+{/if}
 
 {#if showQR}
 	<div class="sheet" role="dialog" aria-modal="true" aria-label="QR da sala {code}">
@@ -323,6 +376,59 @@
 	.sheet-card img {
 		border-radius: 8px;
 		background: #fff;
+	}
+	.invite-card {
+		align-items: stretch;
+		max-height: 85dvh;
+	}
+	.invite-card h2 {
+		margin: 0;
+		font-size: 20px;
+	}
+	.invite-card p {
+		margin: 0;
+		line-height: 1.45;
+	}
+	.friends {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		overflow-y: auto;
+	}
+	.friends li {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 56px;
+	}
+	.who {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		font-size: 13px;
+	}
+	.who strong {
+		font-size: 15px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.tag {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		font-size: 13px;
+		color: var(--muted);
+	}
+	.small {
+		height: 40px;
+		padding: 0 12px;
+		font-size: 14px;
 	}
 	.sheet-code {
 		margin: 0;

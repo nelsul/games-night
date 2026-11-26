@@ -4,8 +4,13 @@
 	import { session } from '$lib/session.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import PhotoPicker from '$lib/components/PhotoPicker.svelte';
+	import HandleField from '$lib/components/HandleField.svelte';
 
 	let name = $state(session.me?.name ?? '');
+	let handle = $state(session.me?.handle ?? '');
+	let handleOk = $state(false);
+	const handleChanged = $derived(handle !== (session.me?.handle ?? ''));
+	const nameChanged = $derived(name.trim() !== (session.me?.name ?? ''));
 	let error = $state('');
 	let saved = $state(false);
 	let busy = $state(false);
@@ -16,7 +21,7 @@
 		saved = false;
 		busy = true;
 		try {
-			session.me = await api.patch<Me>('/me', { name });
+			session.me = await api.patch<Me>('/me', handleChanged ? { name, handle } : { name });
 			saved = true;
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Algo deu errado.';
@@ -53,9 +58,10 @@
 			<label for="name">Nome</label>
 			<input id="name" class="input" maxlength="24" required bind:value={name} oninput={() => (saved = false)} />
 		</div>
+		<HandleField bind:handle bind:ok={handleOk} current={session.me?.handle ?? ''} />
 		<p class="muted email">{session.me?.email}</p>
 		{#if error}<p class="error" role="alert">{error}</p>{/if}
-		<button class="btn btn-primary btn-block" disabled={busy || !name.trim() || name.trim() === session.me?.name}>
+		<button class="btn btn-primary btn-block" disabled={busy || !name.trim() || (!nameChanged && !handleChanged) || (handleChanged && !handleOk)}>
 			{saved ? 'Salvo' : 'Salvar'}
 		</button>
 	</form>

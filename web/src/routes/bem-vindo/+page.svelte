@@ -5,8 +5,12 @@
 	import { session } from '$lib/session.svelte';
 	import Logo from '$lib/components/Logo.svelte';
 	import PhotoPicker from '$lib/components/PhotoPicker.svelte';
+	import HandleField from '$lib/components/HandleField.svelte';
 
 	let name = $state(session.me?.name ?? '');
+	let handle = $state(session.me?.handle ?? '');
+	let handleOk = $state(false);
+	const handleReady = $derived(handleOk || (!!session.me?.handle && handle === session.me.handle));
 	let error = $state('');
 	let busy = $state(false);
 
@@ -15,7 +19,7 @@
 		error = '';
 		busy = true;
 		try {
-			session.me = await api.patch<Me>('/me', { name });
+			session.me = await api.patch<Me>('/me', { name, handle });
 			const next = page.url.searchParams.get('next');
 			await goto(next && next.startsWith('/') && !next.startsWith('//') ? next : '/', { replaceState: true });
 		} catch (err) {
@@ -36,8 +40,9 @@
 			<label for="name">Seu nome</label>
 			<input id="name" class="input" maxlength="24" autocomplete="nickname" required bind:value={name} />
 		</div>
+		<HandleField bind:handle bind:ok={handleOk} current={session.me?.handle ?? ''} />
 		{#if error}<p class="error" role="alert">{error}</p>{/if}
-		<button class="btn btn-primary btn-block" disabled={busy || !name.trim()}>Continuar</button>
+		<button class="btn btn-primary btn-block" disabled={busy || !name.trim() || !handleReady}>Continuar</button>
 	</form>
 </main>
 
