@@ -1,7 +1,7 @@
 <script lang="ts">
-	// The profile photo: tap to pick one, it is squared and shrunk before upload.
+	// The profile photo: tap to pick one, then crop, rotate or mirror it before upload.
 	import { api, ApiError, type Me } from '$lib/api';
-	import { squareAvatar } from '$lib/image';
+	import AvatarCropper from './AvatarCropper.svelte';
 	import { session } from '$lib/session.svelte';
 	import Avatar from './Avatar.svelte';
 	import Icon from './Icon.svelte';
@@ -10,16 +10,20 @@
 	let input = $state<HTMLInputElement>();
 	let busy = $state(false);
 	let error = $state('');
+	let picked = $state<File | null>(null);
 
-	async function onPick() {
+	function onPick() {
 		if (!input) return;
 		const file = input.files?.[0];
 		input.value = '';
 		if (!file) return;
 		error = '';
+		picked = file;
+	}
+
+	async function upload(blob: Blob) {
 		busy = true;
 		try {
-			const blob = await squareAvatar(file);
 			const form = new FormData();
 			form.append('file', blob, 'avatar.jpg');
 			session.me = await api.post<Me>('/me/avatar', form);
@@ -27,6 +31,7 @@
 			error = err instanceof ApiError ? err.message : 'Não deu para usar essa foto. Tente outra.';
 		} finally {
 			busy = false;
+			picked = null; // close the cropper so a problem shows under the photo
 		}
 	}
 </script>
@@ -50,6 +55,10 @@
 		{#if !session.me.photos_enabled}<p class="muted small">Fotos de perfil chegam em breve.</p>{/if}
 		{#if error}<p class="error" role="alert">{error}</p>{/if}
 	</div>
+{/if}
+
+{#if picked}
+	<AvatarCropper file={picked} onsave={upload} oncancel={() => (picked = null)} />
 {/if}
 
 <style>
