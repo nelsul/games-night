@@ -14,6 +14,12 @@ Thanks for helping build Games Night! 🎲
 4. Open a pull request with a short description in English, following the template. Add screenshots for anything visual, at phone size (about 390 px wide).
 5. CI runs two required checks: **`check`** (format, vet, tests, builds) and **`scope`** (below). Nelson reviews; once approved and green, he merges, and the Deploy workflow ships it. Watch it in the Actions tab.
 
+**Pull requests merge by rebase** (the only option; `main` keeps a linear history). Your commits land on `main` one by one, as you wrote them, so:
+
+- make each commit a small, meaningful step that builds and passes the tests, with a clear message in English;
+- tidy up before asking for review (`git rebase -i main` to squash "fix typo" commits into the ones they fix);
+- keep the branch up to date with `git fetch && git rebase origin/main` (not merge commits), then `git push --force-with-lease`.
+
 ## Two kinds of pull requests
 
 Every pull request is exactly one of these. The **`scope`** check works it out from the files you changed and fails anything in between.

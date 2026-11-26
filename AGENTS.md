@@ -36,7 +36,7 @@ Use the terms in [GLOSSARY.md](GLOSSARY.md) (room, host, lobby, match, squad, sp
 - **Every PR is either a hub change (title `hub: …`) or a change to exactly one game (title `<id>: …`).** The required `scope` check enforces it, plus append-only migrations, game SQL limited to its own schema, and no imports between games. Don't mix kinds; split the work into separate PRs.
 - **Merging a PR that touches `api/`, `web/`, `Dockerfile`, `docker-compose.yml` or the workflows deploys to production.** Treat a merge as a deploy.
 - CI's `check` job must pass: `gofmt`, `go vet`, `go test` (with the Postgres isolation tests), `npm run check`, `npm run build`. And `scope` (see above).
-- Merge with squash. Commit messages, PR descriptions and issues are in English.
+- PRs merge by **rebase** (the only option; `main` keeps a linear history), so every commit in a PR lands on `main` as is: keep commits small and meaningful, each one building and passing tests, with a clear message. Commit messages, PR descriptions and issues are in English.
 
 ### Test locally first
 
