@@ -4,19 +4,54 @@ Thanks for helping build Games Night! 🎲
 
 ## Workflow
 
-`main` is protected: nobody pushes to it directly, Nelson included. Every change goes through a pull request, and **merging into `main` deploys to https://gamesnight.nelsul.com automatically**.
+`main` is protected: nobody pushes to it directly. Every change goes through a pull request, **Nelson reviews and approves every pull request**, and **merging into `main` deploys to https://gamesnight.nelsul.com automatically**. Nothing merges by itself.
 
-1. Create a branch from `main`: `git switch -c feature/short-name`. Fork the repo first if you don't have write access.
+1. Create a branch from `main`: `git switch -c <game-or-hub>/short-name`. Fork the repo first if you don't have write access.
 2. Make your change and run it locally (see [Run it locally](#run-it-locally)).
 3. Run the checks for what you touched:
-   - API: `gofmt -l .` (must print nothing), `go vet ./...` and `go test ./...` in `api/`
+   - API: `gofmt -l .` (must print nothing), `go vet ./...` and `go test ./...` in `api/`. The database isolation tests run when `TEST_DATABASE_URL` points at a Postgres where you may create databases, for example the dev one: `TEST_DATABASE_URL=postgres://gamesnight:gamesnight@127.0.0.1:5435/gamesnight go test ./...`
    - website: `npm run check` and `npm run build` in `web/`
+4. Open a pull request with a short description in English, following the template. Add screenshots for anything visual, at phone size (about 390 px wide).
+5. CI runs two required checks: **`check`** (format, vet, tests, builds) and **`scope`** (below). Nelson reviews; once approved and green, he merges, and the Deploy workflow ships it. Watch it in the Actions tab.
 
-   CI runs all of them on your PR as the `check` job, and it must pass before the PR can be merged.
-4. Open a pull request with a short description in English. Add screenshots for anything visual, at phone size (about 390 px wide).
-5. Once it's merged, the Deploy workflow builds the image, ships it to the server and runs a smoke test. Watch it in the Actions tab.
+## Two kinds of pull requests
 
-Ideas and bugs go in [GitHub Issues](https://github.com/nelsul/games-night/issues).
+Every pull request is exactly one of these. The **`scope`** check works it out from the files you changed and fails anything in between.
+
+| Kind | Title starts with | May change |
+|---|---|---|
+| **Hub** | `hub: ` | anything outside the games' folders: rooms, lobby, profiles, friends, chat, the site shell, CI, docs |
+| **One game** | `<game id>: ` (e.g. `backdoor: `) | only that game's folders (next section) |
+
+A game pull request may not touch the hub or any other game, and a hub pull request may not touch a game. If a change really has to cross that line (for example, changing the interface every game implements), say so in the PR: Nelson can allow it with the `hub+games` label.
+
+`scope` also fails when:
+
+- a migration already on `main` is edited, renamed or deleted (add a new numbered file instead);
+- a game's SQL names anything outside its own schema (other than `REFERENCES public.rooms(id)` / `public.users(id)`), uses an unqualified table name, or uses functions, triggers, `DO` blocks, grants or roles;
+- hub SQL touches a game's schema;
+- a game imports another game's code (Go or web), or the hub's Go package.
+
+## Adding a game
+
+A game lives entirely in its own folders, named after its **id** (lower case, letters, digits and `_`, e.g. `quiz`). The id is also its Postgres schema and the prefix of its pull request titles.
+
+| Folder | What goes there |
+|---|---|
+| `api/games/<id>/` | the Go package: rules engine with unit tests, plus the `games.Engine` implementation (see `api/games/games.go`) |
+| `api/games/<id>/migrations/` | `001_init.sql`, `002_….sql`…: tables in schema `<id>`, e.g. `CREATE TABLE <id>.matches (…)` |
+| `api/games/all/<id>.go` | one line, `import _ "github.com/nelsul/games-night/api/games/<id>"`, so the hub includes the game |
+| `web/src/lib/games/<id>/` | the screens; `index.ts` exports the game module (`GameModule` in `web/src/lib/games.ts`): info, title, poster art, match screen, optional lobby options |
+| `web/static/games/<id>/` | images, sounds and other files, if any |
+| `docs/games/<id>/` | rules and notes, if any |
+
+The hub finds the game by itself (Go `init()` registration and Vite's `import.meta.glob`), so adding one never touches hub files. Backdoor (`api/games/backdoor`, `web/src/lib/games/backdoor`) is the reference: copy its structure.
+
+**How a game's data stays isolated.** The hub creates a Postgres role `game_<id>` that owns schema `<id>` and nothing else, runs the game's migrations as that role, and switches to it around every call into the game. The role can only point foreign keys at `public.rooms(id)` and `public.users(id)`. It can't read the hub's tables (not even emails) or touch another game's schema: the database refuses, whatever the code does. `api/isolation_test.go` proves it in CI.
+
+**What a game gets from the hub:** the room and its players (with names, photos, online status and bots), the host, lobby options stored as JSON (validated by the game), live updates (every player gets their own view of the match from `View`), the room chat, and bots (implement `games.BotPlayer`).
+
+**Rules for games:** the server decides everything and `View` only sends each player what they may see; original names, art and text (familiar mechanics are fine, copied names, characters or art aren't); Portuguese for everything people see; mobile first.
 
 ## Run it locally
 
@@ -35,8 +70,8 @@ cd web && npm install && npm run dev              # site on http://localhost:517
 
 ## How the code is organized
 
-- **The hub** (`api/rooms.go`, `api/hub.go`, `web/src/routes/`) owns people, rooms, the lobby and live updates. It doesn't know any game's rules.
-- **A game** is a Go package under `api/games/<game>/` implementing `games.Engine` (`api/games/games.go`): a pure rules engine with unit tests, plus storage in **its own Postgres schema** (`<game>.*`) with its own migrations in `api/games/<game>/migrations/`, tracked in `<game>.schema_migrations`. Register it in `api/games.go`. Its screens live in `web/src/lib/games/<game>/`, and its copy for the hub in `web/src/lib/games.ts`. The hub never reads a game's tables, and a game only points at the hub's `rooms` and `users`.
+- **The hub** (`api/*.go`, `web/src/routes/`, `web/src/lib/` outside `games/<id>/`) owns people, rooms, the lobby, chat, bots and live updates. It never names a specific game.
+- **Games** plug in as described in [Adding a game](#adding-a-game).
 - **Live updates:** each room has a WebSocket (`/api/rooms/{code}/ws`). The server always sends a full snapshot of the room, never a diff, so a phone that wakes up or reconnects is up to date at once.
 - **Secrets stay on the server.** When games have hidden information (like who the hackers are), the server only ever sends each player what that player may see.
 
@@ -46,7 +81,7 @@ cd web && npm install && npm run dev              # site on http://localhost:517
 - **Portuguese UI** (pt-BR) for everything people see, including API error messages and `aria-label`s. Code, comments, commits, issues, PRs and docs are in English.
 - **Two looks:** the hub has a streaming-style look (near-black, red accent, Bebas Neue titles), with tokens in `web/src/app.css`. Each game has its own look; Backdoor's is inspired by phone settings screens and code review tools (dark, green and red status colors, monospace details). Don't use real companies' names, logos or exact brand colors: the game's companies are the made-up **Cudia** and **Samgung**.
 - **Original games only.** Mechanics can be familiar, but names, characters, art and text are ours.
-- **Database changes** are new files in `api/migrations/` for the hub, or in `api/games/<game>/migrations/` for a game (`002_….sql`, `003_….sql`…). They are embedded in the API and applied in order when it starts. Never edit a migration that is already on `main`: production has run it.
+- **Database changes** are new files in `api/migrations/` for the hub, or in `api/games/<id>/migrations/` for a game (`002_….sql`, `003_….sql`…). They are embedded in the API and applied in order when it starts. Never edit a migration that is already on `main`: production has run it.
 - **Accessibility:** visible focus, labels on inputs, `aria-label` on icon-only buttons, and nothing communicated by color alone.
 
 ## Never commit secrets 🔒

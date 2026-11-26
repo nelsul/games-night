@@ -11,11 +11,8 @@
 	import { connectRoom, type RoomSocket } from '$lib/room-socket';
 	import { session } from '$lib/session.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
-	import BackdoorTitle from '$lib/components/BackdoorTitle.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import Backdoor from '$lib/games/backdoor/Backdoor.svelte';
-	import LobbyOptions from '$lib/games/backdoor/LobbyOptions.svelte';
-	import type { MatchView } from '$lib/games/backdoor/types';
+	import { games } from '$lib/games';
 
 	const code = $derived((page.params.code ?? '').toUpperCase());
 
@@ -33,13 +30,11 @@
 	const me = $derived(session.me?.id ?? '');
 	const isHost = $derived(room?.host_id === me);
 	const missing = $derived(room ? Math.max(0, room.game.min_players - room.players.length) : 0);
-	const match = $derived(
-		room?.status === 'playing' || room?.status === 'finished' ? (room.match as MatchView | null) : null
-	);
-	// Zero-day and Freelancer need 7+ people; the server checks it too.
-	const specialsBlocked = $derived(
-		!!room && (room.options?.zero_day === true || room.options?.freelancer === true) && room.players.length < 7
-	);
+	// The room's game: its screens come from lib/games/<id>/index.ts.
+	const game = $derived(room ? games[room.game.id] : undefined);
+	const match = $derived(room?.status === 'playing' || room?.status === 'finished' ? room.match : null);
+	// A game-specific reason the host can't start yet (the server checks it too).
+	const notReady = $derived(room && game?.whyNotStart ? game.whyNotStart(room) : null);
 	const onlineCount = $derived(room ? room.players.filter((p) => p.online).length : 0);
 
 	// A chime when someone (or a bot) arrives in the lobby.
@@ -204,12 +199,16 @@
 <svelte:head><title>Sala {code} · Games Night</title></svelte:head>
 
 {#if room && match}
-	<Backdoor {room} {match} {me} isHost={isHost} onroom={(r) => (room = r)} onchat={openChat} onleave={leave} {unread} />
+	{#if game}
+		<game.Match {room} {match} {me} {isHost} onroom={(r) => (room = r)} onchat={openChat} onleave={leave} {unread} />
+	{:else}
+		<main class="page"><p class="muted center">Esse jogo não está disponível nesta versão do site. Atualize a página.</p></main>
+	{/if}
 {:else}
 <main class="page lobby">
 	<header>
 		<a href="/" aria-label="Voltar ao início"><Icon name="back" /></a>
-		<BackdoorTitle size={26} />
+		{#if game}<game.Title size={26} />{:else}<span></span>{/if}
 		{#if room}
 			<span class="actions">
 				<button class="icon-btn chat-btn" onclick={openChat} aria-label={unread ? `Chat, ${unread} novas` : 'Chat'}>
@@ -288,15 +287,17 @@
 			</section>
 		{/if}
 
-		<LobbyOptions {room} {isHost} onchange={(r) => (room = r)} />
+		{#if game?.LobbyOptions}
+			<game.LobbyOptions {room} {isHost} onchange={(r) => (room = r)} />
+		{/if}
 
 		<div class="bottom">
 			<p class="muted center">
 				{room.players.length} de {room.game.max_players} ·
 				{#if missing > 0}
 					{missing === 1 ? 'falta 1 pessoa' : `faltam ${missing} pessoas`} para começar
-				{:else if specialsBlocked}
-					Zero-day e Freelancer precisam de 7 pessoas
+				{:else if notReady}
+					{notReady}
 				{:else if room.status === 'playing'}
 					carregando a partida…
 				{:else if isHost}
@@ -309,7 +310,7 @@
 			{#if isHost}
 				<button
 					class="btn btn-primary btn-block"
-					disabled={missing > 0 || specialsBlocked || !room.game.available || starting}
+					disabled={missing > 0 || !!notReady || !room.game.available || starting}
 					onclick={start}
 				>
 					<Icon name="play" size={18} />{starting ? 'Distribuindo crachás…' : 'Começar partida'}

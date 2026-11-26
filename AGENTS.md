@@ -14,7 +14,7 @@ Games Night is a hub of party games played with friends, each person on their ow
 
 Key ideas:
 
-- **The hub doesn't know game rules.** It owns people, rooms, the lobby and live updates. Each game is a package under `api/games/<game>/` implementing `games.Engine`, with **its own Postgres schema and migrations**; the hub never reads a game's tables. Games register in `api/games.go` and `web/src/lib/games.ts`; their screens live in `web/src/lib/games/<game>/`.
+- **The hub doesn't know game rules, or even game names.** Games are plugins in their own folders (`api/games/<id>/`, `api/games/all/<id>.go`, `web/src/lib/games/<id>/`, `web/static/games/<id>/`, `docs/games/<id>/`), found automatically. Each game has **its own Postgres schema and role** (`game_<id>`): its migrations and queries run as that role, which can't touch the hub or other games. See CONTRIBUTING.md → Adding a game.
 - **The server is authoritative.** Phones send actions; the server validates them and decides outcomes.
 - **Hidden information never leaves the server.** Each player only receives their own view of the game state. Never send another player's secret role "to hide it in the UI".
 - **Every live message is a full snapshot**, so reconnecting (Safari drops sockets when the screen locks) needs no replay.
@@ -32,9 +32,10 @@ Use the terms in [GLOSSARY.md](GLOSSARY.md) (room, host, lobby, match, squad, sp
 
 ### Workflow
 
-- `main` is protected: work on a branch and open a PR. Never push to `main`.
+- `main` is protected: work on a branch and open a PR. Never push to `main`. Nelson reviews and merges every PR; never enable auto-merge.
+- **Every PR is either a hub change (title `hub: …`) or a change to exactly one game (title `<id>: …`).** The required `scope` check enforces it, plus append-only migrations, game SQL limited to its own schema, and no imports between games. Don't mix kinds; split the work into separate PRs.
 - **Merging a PR that touches `api/`, `web/`, `Dockerfile`, `docker-compose.yml` or the workflows deploys to production.** Treat a merge as a deploy.
-- CI's `check` job must pass: `gofmt`, `go vet`, `go test`, `npm run check`, `npm run build`.
+- CI's `check` job must pass: `gofmt`, `go vet`, `go test` (with the Postgres isolation tests), `npm run check`, `npm run build`. And `scope` (see above).
 - Merge with squash. Commit messages, PR descriptions and issues are in English.
 
 ### Test locally first

@@ -151,8 +151,11 @@ func (a *App) botStep(roomID string) (bool, error) {
 	}
 	var acted bool
 	err = pgx.BeginFunc(ctx, a.db, func(tx pgx.Tx) error {
-		var err error
-		if acted, err = bp.BotStep(ctx, tx, roomID, bots, time.Now()); err != nil || !acted {
+		if err := asGame(ctx, tx, e, func() error {
+			var err error
+			acted, err = bp.BotStep(ctx, tx, roomID, bots, time.Now())
+			return err
+		}); err != nil || !acted {
 			return err
 		}
 		return markIfOver(ctx, tx, e, roomID)

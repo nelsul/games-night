@@ -1,15 +1,16 @@
 <script lang="ts">
 	import type { RoomSummary } from '$lib/api';
-	import BackdoorTitle from './BackdoorTitle.svelte';
+	import { games } from '$lib/games';
 
 	let { room }: { room: RoomSummary } = $props();
+	const game = $derived(games[room.game.id]);
 	const status = $derived(room.status === 'playing' ? 'Em partida' : 'No lobby');
 	const fill = $derived(Math.min(100, Math.round((room.players / room.game.max_players) * 100)));
 </script>
 
 <a class="card" href="/sala/{room.code}">
 	<span class="thumb">
-		<BackdoorTitle size={30} />
+		{#if game}<game.Title size={30} />{:else}<span class="fallback">{room.game.name}</span>{/if}
 		<span class="code">{room.code}</span>
 	</span>
 	<span class="bar" aria-hidden="true"><span style="width: {fill}%"></span></span>

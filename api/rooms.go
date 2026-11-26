@@ -134,7 +134,7 @@ func (a *App) matchView(ctx context.Context, roomID, gameID, userID string) any 
 	if !ok {
 		return nil
 	}
-	m, err := e.View(ctx, a.db, roomID, userID)
+	m, err := a.gameView(ctx, e, roomID, userID)
 	if err != nil {
 		a.log.Error("match view", "room", roomID, "err", err)
 		return nil

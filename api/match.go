@@ -115,7 +115,7 @@ func (a *App) handleStartMatch(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		if err := e.Start(ctx, tx, rr.ID, players, options, time.Now()); err != nil {
+		if err := asGame(ctx, tx, e, func() error { return e.Start(ctx, tx, rr.ID, players, options, time.Now()) }); err != nil {
 			return err
 		}
 		_, err = tx.Exec(ctx, `UPDATE rooms SET status = 'playing', updated_at = now() WHERE id = $1`, rr.ID)
@@ -154,7 +154,7 @@ func (a *App) handleMatchAction(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	err := pgx.BeginFunc(ctx, a.db, func(tx pgx.Tx) error {
-		if err := e.Act(ctx, tx, rr.ID, currentUser(ctx), raw, time.Now()); err != nil {
+		if err := asGame(ctx, tx, e, func() error { return e.Act(ctx, tx, rr.ID, currentUser(ctx), raw, time.Now()) }); err != nil {
 			return err
 		}
 		return markIfOver(ctx, tx, e, rr.ID)
@@ -176,7 +176,7 @@ func (a *App) handleStopMatch(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	err := pgx.BeginFunc(ctx, a.db, func(tx pgx.Tx) error {
-		if err := e.Stop(ctx, tx, rr.ID); err != nil {
+		if err := asGame(ctx, tx, e, func() error { return e.Stop(ctx, tx, rr.ID) }); err != nil {
 			return err
 		}
 		_, err := tx.Exec(ctx, `UPDATE rooms SET status = 'lobby', updated_at = now() WHERE id = $1`, rr.ID)
@@ -191,14 +191,18 @@ func (a *App) handleStopMatch(w http.ResponseWriter, r *http.Request) {
 
 // markIfOver moves the room to "finished" once its match has ended, so people may leave.
 func markIfOver(ctx context.Context, tx pgx.Tx, e games.Engine, roomID string) error {
-	over, err := e.Over(ctx, tx, roomID)
-	if err != nil {
+	var over bool
+	if err := asGame(ctx, tx, e, func() error {
+		var err error
+		over, err = e.Over(ctx, tx, roomID)
+		return err
+	}); err != nil {
 		return err
 	}
 	status := "playing"
 	if over {
 		status = "finished"
 	}
-	_, err = tx.Exec(ctx, `UPDATE rooms SET status = $2, updated_at = now() WHERE id = $1`, roomID, status)
+	_, err := tx.Exec(ctx, `UPDATE rooms SET status = $2, updated_at = now() WHERE id = $1`, roomID, status)
 	return err
 }
