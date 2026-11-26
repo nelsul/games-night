@@ -145,6 +145,7 @@ func run(log *slog.Logger) error {
 		defer cancel()
 		_ = srv.Shutdown(shutdown)
 	}()
+	app.wakeAllBots(ctx)
 	log.Info("listening", "addr", cfg.Addr)
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err

@@ -157,3 +157,24 @@ func (a *App) botStep(roomID string) (bool, error) {
 	})
 	return acted, err
 }
+
+// wakeAllBots runs at startup: matches that were waiting on a bot when the server
+// restarted (every deploy restarts it) carry on without anyone having to reconnect.
+func (a *App) wakeAllBots(ctx context.Context) {
+	rows, err := a.db.Query(ctx, `
+		SELECT DISTINCT r.id::text FROM rooms r
+		JOIN room_players p ON p.room_id = r.id JOIN users u ON u.id = p.user_id
+		WHERE r.status = 'playing' AND u.is_bot`)
+	if err != nil {
+		a.log.Error("wake bots", "err", err)
+		return
+	}
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		a.log.Error("wake bots", "err", err)
+		return
+	}
+	for _, id := range ids {
+		a.wakeBots(id)
+	}
+}
