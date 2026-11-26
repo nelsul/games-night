@@ -3,7 +3,8 @@
 	import { page } from '$app/state';
 	import { onDestroy, onMount } from 'svelte';
 	import QRCode from 'qrcode';
-	import { api, ApiError, type InvitableFriend, type Room } from '$lib/api';
+	import { api, ApiError, type ChatMessage, type InvitableFriend, type Room } from '$lib/api';
+	import RoomChat from '$lib/components/RoomChat.svelte';
 	import { connectRoom, type RoomSocket } from '$lib/room-socket';
 	import { session } from '$lib/session.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -51,6 +52,39 @@
 	const full = $derived(room ? room.players.length >= room.game.max_players : false);
 	const link = $derived(`${location.origin}/sala/${code}`);
 
+	// Chat: history on join and after each reconnect, live messages over the socket.
+	let messages = $state<ChatMessage[]>([]);
+	let chatOpen = $state(false);
+	let unread = $state(0);
+	let toast = $state<ChatMessage | null>(null);
+	let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function addMessages(list: ChatMessage[]) {
+		const seen = new Set(messages.map((m) => m.id));
+		const fresh = list.filter((m) => !seen.has(m.id));
+		if (!fresh.length) return;
+		messages = [...messages, ...fresh].sort((a, b) => a.id - b.id).slice(-200);
+		return fresh;
+	}
+
+	async function loadChat() {
+		addMessages(await api.get<ChatMessage[]>(`/rooms/${code}/messages`).catch(() => []));
+	}
+
+	function onChat(m: ChatMessage) {
+		if (!addMessages([m]) || m.user.id === me || chatOpen) return;
+		unread++;
+		toast = m;
+		clearTimeout(toastTimer);
+		toastTimer = setTimeout(() => (toast = null), 3500);
+	}
+
+	function openChat() {
+		chatOpen = true;
+		unread = 0;
+		toast = null;
+	}
+
 	onMount(async () => {
 		try {
 			room = await api.post<Room>(`/rooms/${code}/join`);
@@ -64,7 +98,11 @@
 				// Someone else removed us (we left on another device): go home.
 				if (!r.players.some((p) => p.id === me)) goto('/', { replaceState: true });
 			},
-			onStatus: (c) => (connected = c)
+			onChat,
+			onStatus: (c) => {
+				connected = c;
+				if (c) loadChat();
+			}
 		});
 	});
 
@@ -121,14 +159,19 @@
 <svelte:head><title>Sala {code} · Games Night</title></svelte:head>
 
 {#if room && match}
-	<Backdoor {room} {match} {me} isHost={isHost} onroom={(r) => (room = r)} />
+	<Backdoor {room} {match} {me} isHost={isHost} onroom={(r) => (room = r)} onchat={openChat} {unread} />
 {:else}
 <main class="page lobby">
 	<header>
 		<a href="/" aria-label="Voltar ao início"><Icon name="back" /></a>
 		<BackdoorTitle size={26} />
 		{#if room}
-			<button class="icon-btn" onclick={leave} aria-label="Sair da sala"><Icon name="door" size={22} /></button>
+			<span class="actions">
+				<button class="icon-btn chat-btn" onclick={openChat} aria-label={unread ? `Chat, ${unread} novas` : 'Chat'}>
+					<Icon name="chat" size={22} />{#if unread}<span class="badge" aria-hidden="true">{unread}</span>{/if}
+				</button>
+				<button class="icon-btn" onclick={leave} aria-label="Sair da sala"><Icon name="door" size={22} /></button>
+			</span>
 		{:else}
 			<span class="icon-btn" aria-hidden="true"></span>
 		{/if}
@@ -249,6 +292,16 @@
 	</div>
 {/if}
 
+{#if toast && !chatOpen}
+	<button class="toast" onclick={openChat}>
+		<strong>{toast.user.name}:</strong> {toast.body}
+	</button>
+{/if}
+
+{#if chatOpen && room}
+	<RoomChat {code} {me} {messages} onclose={() => (chatOpen = false)} />
+{/if}
+
 <style>
 	.lobby {
 		display: flex;
@@ -276,8 +329,49 @@
 	header a {
 		margin-left: -10px;
 	}
-	.icon-btn {
+	.actions {
+		display: flex;
 		margin-right: -10px;
+	}
+	.chat-btn {
+		position: relative;
+	}
+	.badge {
+		position: absolute;
+		top: 4px;
+		right: 2px;
+		min-width: 18px;
+		height: 18px;
+		padding: 0 5px;
+		border-radius: 9px;
+		background: var(--brand);
+		color: #fff;
+		font-size: 11px;
+		font-weight: 700;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.toast {
+		position: fixed;
+		left: 50%;
+		top: calc(10px + var(--safe-top));
+		transform: translateX(-50%);
+		z-index: 60;
+		width: min(92vw, 520px);
+		text-align: left;
+		background: rgba(40, 40, 40, 0.97);
+		border: 1px solid var(--line-strong);
+		border-radius: 14px;
+		padding: 10px 14px;
+		color: #fff;
+		font-size: 14px;
+		line-height: 1.35;
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		cursor: pointer;
 	}
 	.center {
 		text-align: center;

@@ -17,6 +17,7 @@ Terms used in code, issues and PRs. The site shows the Portuguese word in parent
 - **Lobby**: a room's state before a match starts (*quem está na sala?*).
 - **Room status**: `lobby` → `playing` → `finished`; `closed` when everyone left.
 - **Match** (*partida*): one play-through of a game inside a room.
+- **Room chat** (*chat da sala*): messages everyone in the room sees, in the lobby and during matches (`room_messages`).
 - **Snapshot**: the full state sent over the WebSocket. Clients never merge diffs.
 
 ## Backdoor

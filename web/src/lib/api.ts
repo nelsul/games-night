@@ -120,3 +120,10 @@ export interface RoomSummary {
 	players: number;
 	updated_at: string;
 }
+
+export interface ChatMessage {
+	id: number;
+	user: PublicUser;
+	body: string;
+	created_at: string;
+}

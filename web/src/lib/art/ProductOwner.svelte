@@ -3,32 +3,34 @@
 	const id = $props.id();
 </script>
 
-<svg viewBox="0 0 200 200" width={size} height={size} role="img" aria-label="Product Owner: pessoa segurando um quadro de tarefas com post-its">
+<svg viewBox="0 0 200 200" width={size} height={size} role="img" aria-label="Product Owner: pessoa de cabelo black power e óculos redondos segurando um post-it escrito MVP, com um roadmap ao fundo">
 	<defs><clipPath id="c{id}"><circle cx="100" cy="100" r="96" /></clipPath></defs>
-	<circle cx="100" cy="100" r="96" fill="#2B2111" />
+	<circle cx="100" cy="100" r="96" fill="#3A2A05" />
 	<g clip-path="url(#c{id})">
-		<rect x="22" y="34" width="14" height="14" rx="2" fill="#4A3A1A" transform="rotate(-8 29 41)" />
-		<rect x="160" y="40" width="14" height="14" rx="2" fill="#4A3A1A" transform="rotate(10 167 47)" />
-		<rect x="150" y="104" width="12" height="12" rx="2" fill="#4A3A1A" transform="rotate(-6 156 110)" />
-		<path d="M26 212 C26 160 58 138 100 138 C142 138 174 160 174 212 Z" fill="#D29922" />
-		<path d="M86 139 L100 156 L114 139 Z" fill="#E6EDF3" />
-		<rect x="89" y="112" width="22" height="30" rx="8" fill="#E0AC69" />
-		<circle cx="100" cy="90" r="32" fill="#E0AC69" />
-		<path d="M66 92 C60 58 88 48 104 52 C124 56 140 70 134 94 C130 80 120 70 104 68 C92 74 78 76 66 92 Z" fill="#3B2314" />
-		<path d="M132 78 C146 84 148 104 140 118 C138 104 134 94 130 88 Z" fill="#3B2314" />
-		<circle cx="88" cy="94" r="3.5" fill="#1B1B1B" />
-		<circle cx="112" cy="94" r="3.5" fill="#1B1B1B" />
-		<path d="M82 85 L94 83 M106 83 L118 85" stroke="#3B2314" stroke-width="3" stroke-linecap="round" />
-		<path d="M92 106 Q100 111 108 106" fill="none" stroke="#1B1B1B" stroke-width="3" stroke-linecap="round" />
-		<rect x="48" y="150" width="104" height="62" rx="6" fill="#F3EAD7" />
-		<path d="M83 150 V212 M117 150 V212" stroke="#C9BC9E" stroke-width="2" />
-		<rect x="55" y="158" width="21" height="16" rx="2" fill="#F2CC60" />
-		<rect x="55" y="178" width="21" height="16" rx="2" fill="#FF9BCE" />
-		<rect x="90" y="158" width="21" height="16" rx="2" fill="#79C0FF" />
-		<rect x="124" y="158" width="21" height="16" rx="2" fill="#7EE2A8" />
-		<rect x="124" y="178" width="21" height="16" rx="2" fill="#7EE2A8" />
-		<path d="M128 166 L131 169 L138 162" fill="none" stroke="#0D1117" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-		<circle cx="48" cy="170" r="9" fill="#E0AC69" />
-		<circle cx="152" cy="170" r="9" fill="#E0AC69" />
+		<path d="M14 120 C40 96 60 128 86 104" fill="none" stroke="#6B5212" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round" />
+		<path d="M118 40 C140 30 160 52 186 36" fill="none" stroke="#6B5212" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round" />
+		<path d="M24 118 V96 L36 100 L24 104" fill="#F2CC60" />
+		<path d="M172 46 V24 L184 28 L172 32" fill="#F2CC60" />
+		<path d="M26 212 C26 160 58 140 100 140 C142 140 174 160 174 212 Z" fill="#D29922" />
+		<path d="M84 141 L100 172 L116 141 Z" fill="#F3EAD7" />
+		<path d="M84 141 L72 172 L92 158 Z M116 141 L128 172 L108 158 Z" fill="#B07F12" />
+		<rect x="89" y="114" width="22" height="30" rx="8" fill="#B5793F" />
+		<circle cx="100" cy="74" r="44" fill="#1F120A" />
+		<circle cx="66" cy="84" r="16" fill="#1F120A" />
+		<circle cx="134" cy="84" r="16" fill="#1F120A" />
+		<circle cx="100" cy="94" r="28" fill="#B5793F" />
+		<circle cx="89" cy="93" r="8" fill="none" stroke="#F2CC60" stroke-width="3" />
+		<circle cx="111" cy="93" r="8" fill="none" stroke="#F2CC60" stroke-width="3" />
+		<path d="M97 93 H103" stroke="#F2CC60" stroke-width="3" />
+		<circle cx="89" cy="94" r="2.5" fill="#1B1B1B" />
+		<circle cx="111" cy="94" r="2.5" fill="#1B1B1B" />
+		<path d="M91 108 Q100 115 109 108" fill="none" stroke="#1B1B1B" stroke-width="3" stroke-linecap="round" />
+		<g transform="rotate(-8 132 168)">
+			<rect x="104" y="140" width="58" height="54" rx="3" fill="#F2CC60" />
+			<rect x="104" y="140" width="58" height="10" rx="3" fill="#E3B341" />
+			<text x="133" y="181" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="800" fill="#3A2A05">MVP</text>
+		</g>
+		<circle cx="108" cy="178" r="9" fill="#B5793F" />
+		<circle cx="54" cy="182" r="9" fill="#B5793F" />
 	</g>
 </svg>

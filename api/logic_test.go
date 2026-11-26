@@ -92,3 +92,18 @@ func TestOrderedPair(t *testing.T) {
 		t.Fatalf("got %q, %q", a, b)
 	}
 }
+
+func TestCleanMessage(t *testing.T) {
+	if got, ok := cleanMessage("  oi\r\n\n\n\n gente  "); !ok || got != "oi\n\n gente" {
+		t.Errorf("got %q, %v", got, ok)
+	}
+	if _, ok := cleanMessage(" \n "); ok {
+		t.Error("blank message accepted")
+	}
+	if _, ok := cleanMessage(strings.Repeat("é", 301)); ok {
+		t.Error("301 characters accepted")
+	}
+	if _, ok := cleanMessage(strings.Repeat("é", 300)); !ok {
+		t.Error("300 characters rejected")
+	}
+}

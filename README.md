@@ -19,6 +19,7 @@ More games will plug into the same hub: rooms, lobby, profiles and live updates 
 - Friends: search people by @, send and answer friend requests
 - Create a room for a game; friends join by invite, code, link or QR code
 - Live notifications of friend requests and room invites
+- Room chat, in the lobby and during matches
 - Live lobby: who is in the room and who is online, updated over a WebSocket
 - **Backdoor**, playable end to end: secret badges, live squad picking, open reviews, secret pushes, the Social Engineer's last guess, post-mortem, and play again
 
