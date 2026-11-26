@@ -71,7 +71,7 @@
 		<a href="/jogos/backdoor" aria-label="Ver o Backdoor" class="art"><KeyArt /></a>
 		<div class="info">
 			<BackdoorTitle />
-			<span class="tags">Dedução · Blefe · Vida de dev · 5–10</span>
+			<span class="tags">Dedução · Blefe · Vida de dev · 5–12</span>
 			<div class="actions">
 				<button class="btn btn-primary" onclick={create} disabled={creating}>
 					<Icon name="play" size={18} />{creating ? 'Criando…' : 'Criar sala'}

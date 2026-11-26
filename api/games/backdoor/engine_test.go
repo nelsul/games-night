@@ -116,9 +116,26 @@ func TestRolesPerTableSize(t *testing.T) {
 			t.Errorf("%d players: optional roles dealt without being turned on", n)
 		}
 	}
-	s := setup(t, 10, Options{ZeroDay: true, Freelancer: true, ProductOwner: true}, 7)
-	if len(hackers(s)) != 4 || len(byRole(s, ZeroDay)) != 1 || len(byRole(s, Freelancer)) != 1 || len(byRole(s, ProductOwner)) != 1 {
+	s := setup(t, 12, Options{ZeroDay: true, Freelancer: true, ProductOwner: true}, 7)
+	if len(hackers(s)) != 5 || len(byRole(s, ZeroDay)) != 1 || len(byRole(s, Freelancer)) != 1 || len(byRole(s, ProductOwner)) != 1 {
 		t.Fatalf("optional roles: %v", s.Roles)
+	}
+}
+
+func TestEveryTableSizeIsPlayable(t *testing.T) {
+	for n := MinPlayers; n <= MaxPlayers; n++ {
+		sizes, ok := squadSizes[n]
+		if !ok || hackersFor[n] == 0 {
+			t.Fatalf("%d players: no table", n)
+		}
+		for i, size := range sizes {
+			if size < 2 || size > n-1 {
+				t.Errorf("%d players, sprint %d: squad of %d", n, i+1, size)
+			}
+		}
+		if h := hackersFor[n]; h*2 >= n {
+			t.Errorf("%d players: %d hackers is not a minority", n, h)
+		}
 	}
 }
 
@@ -132,8 +149,8 @@ func TestSetupChecksOptions(t *testing.T) {
 	if _, err := Setup(players(4), Options{}, rand.New(rand.NewPCG(1, 1)), t0); err == nil {
 		t.Error("4 players accepted")
 	}
-	if _, err := Setup(players(11), Options{}, rand.New(rand.NewPCG(1, 1)), t0); err == nil {
-		t.Error("11 players accepted")
+	if _, err := Setup(players(13), Options{}, rand.New(rand.NewPCG(1, 1)), t0); err == nil {
+		t.Error("13 players accepted")
 	}
 	if err := (Options{TimerSeconds: 45}).CheckLobby(); err == nil {
 		t.Error("odd timer accepted")

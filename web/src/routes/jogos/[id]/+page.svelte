@@ -9,9 +9,12 @@
 	import Security from '$lib/art/Security.svelte';
 	import Hacker from '$lib/art/Hacker.svelte';
 	import Social from '$lib/art/Social.svelte';
+	import ProductOwner from '$lib/art/ProductOwner.svelte';
+	import ZeroDay from '$lib/art/ZeroDay.svelte';
+	import Freelancer from '$lib/art/Freelancer.svelte';
 
 	const game = $derived(games[page.params.id ?? '']);
-	const art = { dev: Dev, security: Security, hacker: Hacker, social: Social };
+	const art = { dev: Dev, security: Security, hacker: Hacker, social: Social, po: ProductOwner, zeroday: ZeroDay, freelancer: Freelancer };
 
 	let tab = $state<'roles' | 'how'>('roles');
 	let error = $state('');

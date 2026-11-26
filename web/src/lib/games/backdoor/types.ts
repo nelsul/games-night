@@ -62,7 +62,9 @@ export interface MatchView {
 	roles?: Record<string, Role>;
 }
 
-export const roleInfo: Record<Role, { name: string; team: 'devs' | 'hackers'; text: string; art: 'dev' | 'security' | 'hacker' | 'social' }> = {
+export type ArtKey = 'dev' | 'security' | 'hacker' | 'social' | 'po' | 'zeroday' | 'freelancer';
+
+export const roleInfo: Record<Role, { name: string; team: 'devs' | 'hackers'; text: string; art: ArtKey }> = {
 	dev: { name: 'Dev', team: 'devs', art: 'dev', text: 'Entregue 3 sprints. Você só faz push limpo e não sabe em quem confiar.' },
 	analyst: {
 		name: 'Analista de Segurança',
@@ -73,7 +75,7 @@ export const roleInfo: Record<Role, { name: string; team: 'devs' | 'hackers'; te
 	product_owner: {
 		name: 'Product Owner',
 		team: 'devs',
-		art: 'dev',
+		art: 'po',
 		text: 'Você sabe quem é o Analista. Se aparecerem dois nomes, um deles é o Zero-day. Proteja o Analista.'
 	},
 	hacker: { name: 'Hacker', team: 'hackers', art: 'hacker', text: 'Derrube 3 sprints com push --backdoor sem ser descoberto.' },
@@ -86,13 +88,13 @@ export const roleInfo: Record<Role, { name: string; team: 'devs' | 'hackers'; te
 	zero_day: {
 		name: 'Zero-day',
 		team: 'hackers',
-		art: 'hacker',
+		art: 'zeroday',
 		text: 'Você é hacker e o Analista não te enxerga. Use isso para entrar nos squads.'
 	},
 	freelancer: {
 		name: 'Freelancer',
 		team: 'hackers',
-		art: 'hacker',
+		art: 'freelancer',
 		text: 'Você é hacker, mas trabalha sozinho: não conhece os outros hackers e eles não te conhecem.'
 	}
 };

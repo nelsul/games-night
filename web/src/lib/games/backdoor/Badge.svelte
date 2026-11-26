@@ -4,12 +4,15 @@
 	import Hacker from '$lib/art/Hacker.svelte';
 	import Security from '$lib/art/Security.svelte';
 	import Social from '$lib/art/Social.svelte';
+	import ProductOwner from '$lib/art/ProductOwner.svelte';
+	import ZeroDay from '$lib/art/ZeroDay.svelte';
+	import Freelancer from '$lib/art/Freelancer.svelte';
 	import type { RoomPlayer } from '$lib/api';
 	import { roleInfo, type MatchView } from './types';
 
 	let { match, people }: { match: MatchView; people: Record<string, RoomPlayer> } = $props();
 
-	const art = { dev: Dev, security: Security, hacker: Hacker, social: Social };
+	const art = { dev: Dev, security: Security, hacker: Hacker, social: Social, po: ProductOwner, zeroday: ZeroDay, freelancer: Freelancer };
 	const info = $derived(roleInfo[match.me.role]);
 	const Art = $derived(art[info.art]);
 	let open = $state(false);
