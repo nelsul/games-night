@@ -251,6 +251,7 @@ func (a *App) routes() http.Handler {
 			r.Get("/inbox", a.handleInbox)
 			r.Get("/handles/available", a.handleHandleAvailable)
 			r.Get("/users/search", a.handleSearchUsers)
+			r.Get("/users/{id}", a.handleGetUser)
 
 			r.Get("/friends", a.handleListFriends)
 			r.Delete("/friends/{id}", a.handleRemoveFriend)
