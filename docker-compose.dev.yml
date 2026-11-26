@@ -1,0 +1,25 @@
+# Local development only: Postgres and SeaweedFS's S3 API (stands in for Cloudflare R2).
+# Ports differ from cotinha's so both projects can run at the same time.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: gamesnight
+      POSTGRES_PASSWORD: gamesnight
+      POSTGRES_DB: gamesnight
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - devdb:/var/lib/postgresql/data
+
+  s3:
+    image: chrislusf/seaweedfs:latest
+    command: server -s3 -dir=/data -master.volumeSizeLimitMB=128
+    ports:
+      - "127.0.0.1:8334:8333"
+    volumes:
+      - devs3:/data
+
+volumes:
+  devdb:
+  devs3:

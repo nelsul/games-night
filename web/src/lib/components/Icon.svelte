@@ -1,0 +1,49 @@
+<script lang="ts">
+	// Stroke icons used across the hub. Decorative unless a label is given.
+	type Name =
+		| 'home'
+		| 'rooms'
+		| 'search'
+		| 'play'
+		| 'plus'
+		| 'back'
+		| 'close'
+		| 'qr'
+		| 'share'
+		| 'book'
+		| 'logout'
+		| 'camera'
+		| 'check'
+		| 'door';
+	let { name, size = 24, label }: { name: Name; size?: number; label?: string } = $props();
+</script>
+
+<svg
+	width={size}
+	height={size}
+	viewBox="0 0 24 24"
+	fill={name === 'play' || name === 'home' ? 'currentColor' : 'none'}
+	stroke={name === 'play' || name === 'home' ? 'none' : 'currentColor'}
+	stroke-width="2"
+	stroke-linecap="round"
+	stroke-linejoin="round"
+	role={label ? 'img' : undefined}
+	aria-label={label}
+	aria-hidden={label ? undefined : 'true'}
+>
+	{#if name === 'home'}<path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z" />
+	{:else if name === 'rooms'}<circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /><circle cx="17" cy="9" r="2.5" /><path d="M17 14c2.8 0 4.5 2 4.5 5" />
+	{:else if name === 'search'}<circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
+	{:else if name === 'play'}<path d="M7 4l13 8-13 8z" />
+	{:else if name === 'plus'}<path d="M12 5v14M5 12h14" />
+	{:else if name === 'back'}<path d="M15 18l-6-6 6-6" />
+	{:else if name === 'close'}<path d="M6 6l12 12M18 6L6 18" />
+	{:else if name === 'qr'}<rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><path d="M14 14h3v3h-3zM18 18h3v3" />
+	{:else if name === 'share'}<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13" />
+	{:else if name === 'book'}<path d="M4 19V5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2zM8 7h6" />
+	{:else if name === 'logout'}<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11" />
+	{:else if name === 'camera'}<path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" />
+	{:else if name === 'check'}<path d="M5 12l5 5L20 7" />
+	{:else if name === 'door'}<path d="M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17M3 21h18M14 12h.01" />
+	{/if}
+</svg>

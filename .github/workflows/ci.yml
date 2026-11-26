@@ -1,0 +1,43 @@
+name: CI
+
+# Runs on every pull request (required to pass before merging into main)
+# and is reused by the deploy workflow before each deploy.
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: API format, vet and tests
+        working-directory: api
+        run: |
+          test -z "$(gofmt -l .)" || { gofmt -l .; echo "::error::run gofmt -w ."; exit 1; }
+          go vet ./...
+          go test ./...
+      - name: Web install
+        working-directory: web
+        run: npm ci
+      - name: Web type check (svelte-check)
+        working-directory: web
+        run: npm run check
+      - name: Web build
+        working-directory: web
+        run: npm run build
