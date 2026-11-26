@@ -1,30 +1,39 @@
 package main
 
-import "net/http"
+import (
+	"net/http"
 
-// Game describes one game in the hub's catalog. The rules engine of each game
-// plugs in here later; for now the hub only needs its name and table size.
-type Game struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	MinPlayers int    `json:"min_players"`
-	MaxPlayers int    `json:"max_players"`
-	Available  bool   `json:"available"` // false while the game can't be played yet
-}
+	"github.com/nelsul/games-night/api/games"
+	"github.com/nelsul/games-night/api/games/backdoor"
+)
 
-var catalog = []Game{
-	{ID: "backdoor", Name: "Backdoor", MinPlayers: 5, MaxPlayers: 10, Available: false},
+// Game is a catalog entry as the site sees it.
+type Game = games.Info
+
+// engines is every game the hub can host. Each owns its rules and its own schema.
+var engines = []games.Engine{backdoor.New()}
+
+func findEngine(id string) (games.Engine, bool) {
+	for _, e := range engines {
+		if e.Info().ID == id {
+			return e, true
+		}
+	}
+	return nil, false
 }
 
 func findGame(id string) (Game, bool) {
-	for _, g := range catalog {
-		if g.ID == id {
-			return g, true
-		}
+	e, ok := findEngine(id)
+	if !ok {
+		return Game{}, false
 	}
-	return Game{}, false
+	return e.Info(), true
 }
 
 func (a *App) handleListGames(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, 200, catalog)
+	out := make([]Game, 0, len(engines))
+	for _, e := range engines {
+		out = append(out, e.Info())
+	}
+	writeJSON(w, 200, out)
 }

@@ -8,7 +8,7 @@ Live at **https://gamesnight.nelsul.com**. Mobile first (Safari and Chrome), dar
 
 | Game | Status | What it is |
 |---|---|---|
-| **Backdoor** | in progress | Social deduction for 5–10 people. The devs at Cudia ship sprints for their client Samgung while hidden hackers in the squad try to slip in a backdoor. Squads are proposed like pull requests, approved or sent back, and each sprint is pushed in secret. |
+| **Backdoor** | playable | Social deduction for 5–10 people. The devs at Cudia ship sprints for their client Samgung while hidden hackers in the squad try to slip in a backdoor. The Scrum Master proposes squads like pull requests, everyone reviews them, and each sprint is pushed in secret: Deploy or Rollback. Optional roles: Product Owner, Zero-day, Freelancer. |
 
 More games will plug into the same hub: rooms, lobby, profiles and live updates are shared; each game brings its own rules and look.
 
@@ -20,7 +20,7 @@ More games will plug into the same hub: rooms, lobby, profiles and live updates 
 - Create a room for a game; friends join by invite, code, link or QR code
 - Live notifications of friend requests and room invites
 - Live lobby: who is in the room and who is online, updated over a WebSocket
-- The Backdoor game page with its characters and rules
+- **Backdoor**, playable end to end: secret badges, live squad picking, open reviews, secret pushes, the Social Engineer's last guess, post-mortem, and play again
 
 ## Stack
 

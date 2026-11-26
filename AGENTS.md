@@ -14,7 +14,7 @@ Games Night is a hub of party games played with friends, each person on their ow
 
 Key ideas:
 
-- **The hub doesn't know game rules.** It owns people, rooms, the lobby and live updates. Games register in `api/games.go` and `web/src/lib/games.ts`.
+- **The hub doesn't know game rules.** It owns people, rooms, the lobby and live updates. Each game is a package under `api/games/<game>/` implementing `games.Engine`, with **its own Postgres schema and migrations**; the hub never reads a game's tables. Games register in `api/games.go` and `web/src/lib/games.ts`; their screens live in `web/src/lib/games/<game>/`.
 - **The server is authoritative.** Phones send actions; the server validates them and decides outcomes.
 - **Hidden information never leaves the server.** Each player only receives their own view of the game state. Never send another player's secret role "to hide it in the UI".
 - **Every live message is a full snapshot**, so reconnecting (Safari drops sockets when the screen locks) needs no replay.

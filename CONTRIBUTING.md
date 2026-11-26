@@ -36,7 +36,7 @@ cd web && npm install && npm run dev              # site on http://localhost:517
 ## How the code is organized
 
 - **The hub** (`api/rooms.go`, `api/hub.go`, `web/src/routes/`) owns people, rooms, the lobby and live updates. It doesn't know any game's rules.
-- **A game** is registered in `api/games.go` (name and table size) and described for the site in `web/src/lib/games.ts` (copy, characters, rules). Its rules engine plugs in on the API side, and its screens live under the game's own folder.
+- **A game** is a Go package under `api/games/<game>/` implementing `games.Engine` (`api/games/games.go`): a pure rules engine with unit tests, plus storage in **its own Postgres schema** (`<game>.*`) with its own migrations in `api/games/<game>/migrations/`, tracked in `<game>.schema_migrations`. Register it in `api/games.go`. Its screens live in `web/src/lib/games/<game>/`, and its copy for the hub in `web/src/lib/games.ts`. The hub never reads a game's tables, and a game only points at the hub's `rooms` and `users`.
 - **Live updates:** each room has a WebSocket (`/api/rooms/{code}/ws`). The server always sends a full snapshot of the room, never a diff, so a phone that wakes up or reconnects is up to date at once.
 - **Secrets stay on the server.** When games have hidden information (like who the hackers are), the server only ever sends each player what that player may see.
 
@@ -46,7 +46,7 @@ cd web && npm install && npm run dev              # site on http://localhost:517
 - **Portuguese UI** (pt-BR) for everything people see, including API error messages and `aria-label`s. Code, comments, commits, issues, PRs and docs are in English.
 - **Two looks:** the hub has a streaming-style look (near-black, red accent, Bebas Neue titles), with tokens in `web/src/app.css`. Each game has its own look; Backdoor's is inspired by phone settings screens and code review tools (dark, green and red status colors, monospace details). Don't use real companies' names, logos or exact brand colors: the game's companies are the made-up **Cudia** and **Samgung**.
 - **Original games only.** Mechanics can be familiar, but names, characters, art and text are ours.
-- **Database changes** are new files in `api/migrations/` (`002_….sql`, `003_….sql`…). They are embedded in the API and applied in order when it starts. Never edit a migration that is already on `main`: production has run it.
+- **Database changes** are new files in `api/migrations/` for the hub, or in `api/games/<game>/migrations/` for a game (`002_….sql`, `003_….sql`…). They are embedded in the API and applied in order when it starts. Never edit a migration that is already on `main`: production has run it.
 - **Accessibility:** visible focus, labels on inputs, `aria-label` on icon-only buttons, and nothing communicated by color alone.
 
 ## Never commit secrets 🔒

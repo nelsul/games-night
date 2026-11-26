@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"math/big"
 	"net/http"
@@ -53,12 +54,14 @@ type RoomPlayer struct {
 }
 
 type RoomView struct {
-	Code      string       `json:"code"`
-	Game      Game         `json:"game"`
-	Status    string       `json:"status"`
-	HostID    string       `json:"host_id"`
-	CreatedAt time.Time    `json:"created_at"`
-	Players   []RoomPlayer `json:"players"`
+	Code      string          `json:"code"`
+	Game      Game            `json:"game"`
+	Status    string          `json:"status"`
+	HostID    string          `json:"host_id"`
+	CreatedAt time.Time       `json:"created_at"`
+	Options   json.RawMessage `json:"options"`
+	Players   []RoomPlayer    `json:"players"`
+	Match     any             `json:"match"` // the game's view for the person asking, or null
 }
 
 type roomRow struct {
@@ -94,8 +97,8 @@ func (a *App) isMember(ctx context.Context, roomID, userID string) (bool, error)
 func (a *App) roomView(ctx context.Context, roomID string) (RoomView, error) {
 	var v RoomView
 	var gameID string
-	err := a.db.QueryRow(ctx, `SELECT code, game, status, host_id, created_at FROM rooms WHERE id = $1`, roomID).
-		Scan(&v.Code, &gameID, &v.Status, &v.HostID, &v.CreatedAt)
+	err := a.db.QueryRow(ctx, `SELECT code, game, status, host_id, created_at, options FROM rooms WHERE id = $1`, roomID).
+		Scan(&v.Code, &gameID, &v.Status, &v.HostID, &v.CreatedAt, &v.Options)
 	if err != nil {
 		return v, err
 	}
@@ -124,7 +127,32 @@ func (a *App) roomView(ctx context.Context, roomID string) (RoomView, error) {
 	return v, rows.Err()
 }
 
-// broadcastRoom sends the room's current state to everyone connected to it.
+// matchView is the game's view of the room's current match for one person, or nil.
+func (a *App) matchView(ctx context.Context, roomID, gameID, userID string) any {
+	e, ok := findEngine(gameID)
+	if !ok {
+		return nil
+	}
+	m, err := e.View(ctx, a.db, roomID, userID)
+	if err != nil {
+		a.log.Error("match view", "room", roomID, "err", err)
+		return nil
+	}
+	return m
+}
+
+// roomViewFor is the room plus the match as userID sees it.
+func (a *App) roomViewFor(ctx context.Context, roomID, userID string) (RoomView, error) {
+	v, err := a.roomView(ctx, roomID)
+	if err != nil {
+		return v, err
+	}
+	v.Match = a.matchView(ctx, roomID, v.Game.ID, userID)
+	return v, nil
+}
+
+// broadcastRoom sends everyone connected to the room its current state, each with
+// their own view of the match.
 func (a *App) broadcastRoom(roomID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -133,7 +161,11 @@ func (a *App) broadcastRoom(roomID string) {
 		a.log.Error("room view", "room", roomID, "err", err)
 		return
 	}
-	a.hub.Send(roomID, map[string]any{"type": "room", "room": v})
+	a.hub.SendEach(roomID, func(userID string) any {
+		mine := v
+		mine.Match = a.matchView(ctx, roomID, v.Game.ID, userID)
+		return map[string]any{"type": "room", "room": mine}
+	})
 }
 
 // notifyUserRooms refreshes every open room the user is in (after a name or photo change).
@@ -272,7 +304,7 @@ func (a *App) handleGetRoom(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	v, err := a.roomView(r.Context(), rr.ID)
+	v, err := a.roomViewFor(r.Context(), rr.ID, currentUser(r.Context()))
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -340,7 +372,7 @@ func (a *App) handleJoinRoom(w http.ResponseWriter, r *http.Request) {
 	if !member {
 		go a.broadcastRoom(rr.ID)
 	}
-	v, err := a.roomView(ctx, rr.ID)
+	v, err := a.roomViewFor(ctx, rr.ID, uid)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
@@ -357,6 +389,10 @@ func (a *App) handleLeaveRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	uid := currentUser(ctx)
+	if rr.Status == "playing" {
+		writeError(w, 409, "A partida está rolando. Peça para o host encerrar antes de sair.")
+		return
+	}
 	tx, err := a.db.Begin(ctx)
 	if err != nil {
 		a.serverError(w, r, err)

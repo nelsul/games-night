@@ -32,9 +32,9 @@ export const backdoor: GameInfo = {
 		'Os devs da Cudia precisam entregar o app da Samgung. O problema: tem hacker infiltrado no squad, e ninguém sabe quem é. Aprove PRs, desconfie de todo mundo e não caia na engenharia social.',
 	howTo: [
 		'Cada pessoa recebe um crachá secreto: dev ou hacker. Os hackers sabem quem são os outros hackers.',
-		'A cada sprint, o tech lead da vez monta um squad e todo mundo aprova ou pede mudanças. Cinco reuniões sem decisão e os hackers vencem.',
-		'Quem está no squad faz um push em segredo. Basta uma backdoor para a sprint ser invadida.',
-		'Três sprints entregues e os devs vencem. Três sprints invadidas e os hackers vencem.'
+		'A cada sprint, o Scrum Master da vez monta um squad e todo mundo aprova ou pede mudanças. Cinco reuniões seguidas sem decisão e os hackers vencem.',
+		'Quem está no squad faz um push em segredo. Basta uma backdoor para a sprint levar rollback.',
+		'Três sprints com rollback e os hackers vencem. Três deploys e os devs quase vencem: a Engenharia Social ainda tem um palpite para achar o Analista.'
 	],
 	roles: [
 		{ name: 'Dev', team: 'devs', art: 'dev', text: 'Entrega as sprints. Só pode fazer push limpo.' },
@@ -50,6 +50,19 @@ export const backdoor: GameInfo = {
 			team: 'hackers',
 			art: 'social',
 			text: 'Se os devs vencerem, tem uma última chance: apontar o Analista.'
+		},
+		{
+			name: 'Product Owner',
+			team: 'devs',
+			art: 'dev',
+			text: 'Opcional. Sabe quem é o Analista e ajuda a protegê-lo.'
+		},
+		{ name: 'Zero-day', team: 'hackers', art: 'hacker', text: 'Opcional, 7+. Um hacker que o Analista não enxerga.' },
+		{
+			name: 'Freelancer',
+			team: 'hackers',
+			art: 'hacker',
+			text: 'Opcional, 7+. Hacker que trabalha sozinho: não conhece os outros hackers.'
 		}
 	]
 };
