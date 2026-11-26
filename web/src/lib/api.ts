@@ -99,6 +99,7 @@ export type RoomStatus = 'lobby' | 'playing' | 'finished' | 'closed';
 export interface RoomPlayer extends PublicUser {
 	is_host: boolean;
 	online: boolean;
+	is_bot: boolean;
 }
 
 export interface Room {

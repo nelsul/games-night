@@ -51,6 +51,7 @@ type RoomPlayer struct {
 	PublicUser
 	IsHost bool `json:"is_host"`
 	Online bool `json:"online"`
+	IsBot  bool `json:"is_bot"`
 }
 
 type RoomView struct {
@@ -104,7 +105,7 @@ func (a *App) roomView(ctx context.Context, roomID string) (RoomView, error) {
 	}
 	v.Game, _ = findGame(gameID)
 	rows, err := a.db.Query(ctx, `
-		SELECT u.id, u.name, u.handle, u.avatar_key FROM room_players p JOIN users u ON u.id = p.user_id
+		SELECT u.id, u.name, u.handle, u.avatar_key, u.is_bot FROM room_players p JOIN users u ON u.id = p.user_id
 		WHERE p.room_id = $1 ORDER BY p.joined_at, u.id`, roomID)
 	if err != nil {
 		return v, err
@@ -116,12 +117,12 @@ func (a *App) roomView(ctx context.Context, roomID string) (RoomView, error) {
 		var p RoomPlayer
 		var id, name string
 		var handle, avatar *string
-		if err := rows.Scan(&id, &name, &handle, &avatar); err != nil {
+		if err := rows.Scan(&id, &name, &handle, &avatar, &p.IsBot); err != nil {
 			return v, err
 		}
 		p.PublicUser = a.publicUser(ctx, id, name, handle, avatar)
 		p.IsHost = p.ID == v.HostID
-		p.Online = online[p.ID]
+		p.Online = online[p.ID] || p.IsBot
 		v.Players = append(v.Players, p)
 	}
 	return v, rows.Err()
@@ -408,7 +409,10 @@ func (a *App) handleLeaveRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var next *string
-	if err := tx.QueryRow(ctx, `SELECT user_id::text FROM room_players WHERE room_id = $1 ORDER BY joined_at, user_id LIMIT 1`, rr.ID).Scan(&next); err != nil && !isNoRows(err) {
+	// The next host is the next person to have joined; bots never host, and a room
+	// with only bots left is closed.
+	if err := tx.QueryRow(ctx, `SELECT p.user_id::text FROM room_players p JOIN users u ON u.id = p.user_id
+		WHERE p.room_id = $1 AND NOT u.is_bot ORDER BY p.joined_at, p.user_id LIMIT 1`, rr.ID).Scan(&next); err != nil && !isNoRows(err) {
 		a.serverError(w, r, err)
 		return
 	}

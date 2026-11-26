@@ -137,6 +137,8 @@ func (a *App) handleRoomSocket(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// A (re)connect also nudges the bots, in case the server restarted mid-match.
+	a.wakeBots(rr.ID)
 	a.serveSocket(w, r, rr.ID, func() { a.broadcastRoom(rr.ID) })
 }
 

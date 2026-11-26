@@ -123,6 +123,7 @@ func (a *App) handleStartMatch(w http.ResponseWriter, r *http.Request) {
 		a.gameError(w, r, err)
 		return
 	}
+	a.wakeBots(rr.ID)
 	a.respondRoom(w, r, rr.ID)
 }
 
@@ -161,6 +162,7 @@ func (a *App) handleMatchAction(w http.ResponseWriter, r *http.Request) {
 		a.gameError(w, r, err)
 		return
 	}
+	a.wakeBots(rr.ID)
 	a.respondRoom(w, r, rr.ID)
 }
 
