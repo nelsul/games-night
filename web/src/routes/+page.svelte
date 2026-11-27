@@ -7,6 +7,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Logo from '$lib/components/Logo.svelte';
 	import RoomCard from '$lib/components/RoomCard.svelte';
+	import Contributors from '$lib/components/Contributors.svelte';
 	import { inbox, refreshInbox } from '$lib/inbox.svelte';
 	import { goto } from '$app/navigation';
 
@@ -111,6 +112,8 @@
 			</div>
 		</div>
 	</section>
+
+	<Contributors />
 </main>
 
 <style>

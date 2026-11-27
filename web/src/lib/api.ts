@@ -113,6 +113,18 @@ export interface Room {
 	match: unknown; // the game's view for me, or null outside a match
 }
 
+export interface Contributor {
+	login: string;
+	avatar_url: string;
+	url: string;
+	contributions: number;
+}
+
+export interface Contributors {
+	repo: string;
+	contributors: Contributor[];
+}
+
 export interface RoomSummary {
 	code: string;
 	game: Game;

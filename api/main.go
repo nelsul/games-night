@@ -45,6 +45,7 @@ type Config struct {
 	S3UseSSL       bool
 	S3Region       string
 	S3CreateBucket bool
+	Repo           string // owner/name on GitHub, for the contributors list
 }
 
 func env(key, def string) string {
@@ -73,6 +74,7 @@ func loadConfig() (Config, error) {
 		S3UseSSL:       env("S3_USE_SSL", "true") == "true",
 		S3Region:       env("S3_REGION", "auto"),
 		S3CreateBucket: env("S3_CREATE_BUCKET", "false") == "true",
+		Repo:           env("GITHUB_REPO", "nelsul/games-night"),
 	}
 	if c.DatabaseURL == "" {
 		return c, errors.New("DATABASE_URL is required")
@@ -81,13 +83,14 @@ func loadConfig() (Config, error) {
 }
 
 type App struct {
-	cfg   Config
-	db    *pgxpool.Pool
-	store *Storage // nil when S3 is not configured: profile photos are then disabled
-	mail  *Mailer
-	hub   *Hub
-	bots  *botRunner
-	log   *slog.Logger
+	cfg          Config
+	db           *pgxpool.Pool
+	store        *Storage // nil when S3 is not configured: profile photos are then disabled
+	mail         *Mailer
+	hub          *Hub
+	bots         *botRunner
+	contributors *contributorsCache
+	log          *slog.Logger
 }
 
 func main() {
@@ -137,7 +140,7 @@ func run(log *slog.Logger) error {
 		log.Warn("S3 is not configured: profile photos are disabled")
 	}
 
-	app := &App{cfg: cfg, db: db, store: store, mail: NewMailer(cfg, log), hub: NewHub(), bots: newBotRunner(), log: log}
+	app := &App{cfg: cfg, db: db, store: store, mail: NewMailer(cfg, log), hub: NewHub(), bots: newBotRunner(), contributors: &contributorsCache{}, log: log}
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           app.routes(),
@@ -238,6 +241,7 @@ func (a *App) routes() http.Handler {
 		r.Use(middleware.Logger)
 		r.Get("/health", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, map[string]string{"ok": "true"}) })
 		r.Get("/games", a.handleListGames)
+		r.Get("/contributors", a.handleContributors)
 		r.Post("/auth/request-code", a.handleRequestCode)
 		r.Post("/auth/verify", a.handleVerifyCode)
 		r.Post("/auth/logout", a.handleLogout)
