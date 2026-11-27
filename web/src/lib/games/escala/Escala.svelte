@@ -55,30 +55,41 @@
 	let editing = $state(false);
 	let confirmStop = $state(false);
 
-	// Clues other people write show up for a few seconds under the card, so nobody repeats them.
-	type Note = { id: number; who: string; text: string };
+	// Clues other people write run across the screen, so nobody repeats them. A note leaves
+	// when its animation ends (NOTE_MS, the same number as the CSS); with reduced motion it
+	// just stays still for the same time.
+	const NOTE_MS = 6500;
+	type Note = { id: number; who: string; text: string; lane: number };
 	let notes = $state<Note[]>([]);
 	let noteSeq = 0;
 	let seen: Record<string, string> = {};
 	let seenKey = '';
+	let firstRun = true;
+	function dropNote(id: number) {
+		notes = notes.filter((o) => o.id !== id);
+	}
 	$effect(() => {
-		const round = match.round;
-		const swapSeq = match.swap_seq;
-		const key = round + ':' + swapSeq;
-		const fresh: Note[] = [];
+		const key = match.round + ':' + match.swap_seq;
 		if (key !== seenKey) {
 			seen = {};
 			notes = [];
 			seenKey = key;
 		}
+		const fresh: Note[] = [];
 		for (const p of match.players) {
 			const text = p.clue ?? '';
-			if (p.id !== me && text && seen[p.id] !== text) fresh.push({ id: ++noteSeq, who: p.id, text });
+			// The first time, the clues already written (a reload in the middle of the round)
+			// are only remembered, so they don't run across the screen again.
+			if (!firstRun && p.id !== me && text && seen[p.id] !== text) fresh.push({ id: ++noteSeq, who: p.id, text, lane: 0 });
 			seen[p.id] = text;
 		}
+		firstRun = false;
 		for (const n of fresh) {
-			notes = [...untrack(() => notes).filter((o) => o.who !== n.who), n].slice(-3);
-			setTimeout(() => (notes = notes.filter((o) => o.id !== n.id)), 5000);
+			const current = untrack(() => notes).filter((o) => o.who !== n.who);
+			n.lane = [0, 1, 2].find((l) => !current.some((o) => o.lane === l)) ?? n.id % 3;
+			notes = [...current, n].slice(-3);
+			// Safety net in case the animation never reports that it ended.
+			setTimeout(() => dropNote(n.id), reducedMotion ? NOTE_MS : NOTE_MS + 1500);
 		}
 	});
 
@@ -438,7 +449,7 @@
 					<span class="hint">{faceDown ? 'Toque para virar a carta' : 'Seu número secreto · toque para esconder'}</span>
 					<div class="notes" aria-live="polite">
 						{#each notes as n (n.id)}
-							<div class="note" class:still={reducedMotion} style="--lane:{n.id % 3}">
+							<div class="note" class:still={reducedMotion} style="--lane:{n.lane}; --ms:{NOTE_MS}ms" onanimationend={() => dropNote(n.id)}>
 								<Avatar user={people[n.who]} size={28} />
 								<span><strong>{first(n.who)}</strong> “{n.text}”</span>
 							</div>
@@ -738,7 +749,7 @@
 		box-shadow: 0 4px 14px #0006;
 		font-size: 14px;
 		white-space: nowrap;
-		animation: run 6.5s linear forwards;
+		animation: run var(--ms, 6500ms) linear forwards;
 	}
 	.note.still {
 		left: 50%;
