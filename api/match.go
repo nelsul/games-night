@@ -206,3 +206,44 @@ func markIfOver(ctx context.Context, tx pgx.Tx, e games.Engine, roomID string) e
 	_, err := tx.Exec(ctx, `UPDATE rooms SET status = $2, updated_at = now() WHERE id = $1`, roomID, status)
 	return err
 }
+
+// settleRoom brings a playing room's status in line with its match (finished once the
+// match is over) and reports whether it is finished.
+func (a *App) settleRoom(ctx context.Context, roomID, gameID string) (bool, error) {
+	e, ok := findEngine(gameID)
+	if !ok {
+		return false, nil
+	}
+	err := pgx.BeginFunc(ctx, a.db, func(tx pgx.Tx) error { return markIfOver(ctx, tx, e, roomID) })
+	if err != nil {
+		return false, err
+	}
+	var status string
+	err = a.db.QueryRow(ctx, `SELECT status FROM rooms WHERE id = $1`, roomID).Scan(&status)
+	return status == "finished", err
+}
+
+// settleAllRooms runs at startup and fixes every playing room whose match already ended.
+func (a *App) settleAllRooms(ctx context.Context) {
+	rows, err := a.db.Query(ctx, `SELECT id::text, game FROM rooms WHERE status = 'playing'`)
+	if err != nil {
+		a.log.Error("settle rooms", "err", err)
+		return
+	}
+	type room struct{ id, game string }
+	var list []room
+	for rows.Next() {
+		var r room
+		if rows.Scan(&r.id, &r.game) == nil {
+			list = append(list, r)
+		}
+	}
+	rows.Close()
+	for _, r := range list {
+		if finished, err := a.settleRoom(ctx, r.id, r.game); err != nil {
+			a.log.Error("settle room", "room", r.id, "err", err)
+		} else if finished {
+			a.log.Info("room marked finished", "room", r.id)
+		}
+	}
+}
