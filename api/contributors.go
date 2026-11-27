@@ -10,7 +10,7 @@ import (
 )
 
 // The home page shows who has worked on the project: the repository's contributors on
-// GitHub. They are fetched at most once an hour and kept in memory; if GitHub is down
+// GitHub. They are fetched at most every 15 minutes and kept in memory; if GitHub is down
 // or rate limited, the last good list is served.
 
 type Contributor struct {
@@ -27,7 +27,7 @@ type contributorsCache struct {
 	tried   time.Time
 }
 
-const contributorsTTL = time.Hour
+const contributorsTTL = 15 * time.Minute
 
 func (a *App) handleContributors(w http.ResponseWriter, r *http.Request) {
 	c := a.contributors
@@ -45,7 +45,7 @@ func (a *App) handleContributors(w http.ResponseWriter, r *http.Request) {
 			c.list, c.fetched = list, time.Now()
 		}
 	}
-	w.Header().Set("Cache-Control", "public, max-age=600")
+	w.Header().Set("Cache-Control", "public, max-age=300")
 	writeJSON(w, 200, map[string]any{"repo": "https://github.com/" + a.cfg.Repo, "contributors": nonNilContributors(c.list)})
 }
 
