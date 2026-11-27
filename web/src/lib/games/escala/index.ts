@@ -39,7 +39,14 @@ const game: GameModule = {
 	Title,
 	KeyArt,
 	Match,
-	LobbyOptions
+	LobbyOptions,
+	screenshots: [
+		{ src: '/games/escala/screens/tema.jpg', caption: 'O tema da rodada e o seu número secreto' },
+		{ src: '/games/escala/screens/dicas.jpg', caption: 'Cada pessoa escreve uma dica sem falar o número' },
+		{ src: '/games/escala/screens/fila.jpg', caption: 'A mesa monta a fila do menor para o maior' },
+		{ src: '/games/escala/screens/revelacao.jpg', caption: 'As cartas viram uma a uma e mostram quem acertou' },
+		{ src: '/games/escala/screens/fim.jpg', caption: 'No fim, quantas rodadas o time acertou' }
+	]
 };
 
 export default game;
