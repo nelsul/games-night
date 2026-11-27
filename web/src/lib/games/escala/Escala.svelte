@@ -438,7 +438,7 @@
 					<span class="hint">{faceDown ? 'Toque para virar a carta' : 'Seu número secreto · toque para esconder'}</span>
 					<div class="notes" aria-live="polite">
 						{#each notes as n (n.id)}
-							<div class="note" in:fly={{ y: 16, duration: motion(260), easing: backOut }} out:fade={{ duration: motion(300) }} animate:flip={{ duration: motion(200) }}>
+							<div class="note" class:still={reducedMotion} style="--lane:{n.id % 3}">
 								<Avatar user={people[n.who]} size={28} />
 								<span><strong>{first(n.who)}</strong> “{n.text}”</span>
 							</div>
@@ -715,25 +715,43 @@
 		padding: 1px 5px;
 	}
 	.notes {
-		width: 100%;
-		min-height: 56px;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 6px;
-		margin-top: 10px;
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: calc(14px + var(--safe-bottom, 0px));
+		z-index: 20;
+		height: 132px;
+		overflow: hidden;
+		pointer-events: none;
 	}
 	.note {
+		position: absolute;
+		left: 0;
+		top: calc(var(--lane) * 44px);
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		max-width: 100%;
-		padding: 6px 14px 6px 6px;
+		padding: 6px 16px 6px 6px;
 		border-radius: 999px;
-		background: #ffffff1c;
-		border: 1px solid #ffffff33;
+		background: #2b1636ee;
+		border: 1px solid #ffb34788;
+		box-shadow: 0 4px 14px #0006;
 		font-size: 14px;
-		overflow-wrap: anywhere;
+		white-space: nowrap;
+		animation: run 6.5s linear forwards;
+	}
+	.note.still {
+		left: 50%;
+		translate: -50% 0;
+		animation: none;
+	}
+	@keyframes run {
+		from {
+			transform: translateX(100vw);
+		}
+		to {
+			transform: translateX(-100%);
+		}
 	}
 
 	/* ---- steps ---- */
