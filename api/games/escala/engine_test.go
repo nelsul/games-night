@@ -202,16 +202,13 @@ func TestNumbersShownAfterReveal(t *testing.T) {
 	}
 }
 
-func TestCluesHiddenUntilAllDone(t *testing.T) {
+func TestCluesVisibleAsWritten(t *testing.T) {
 	s := newMatch(t, 3, 3)
 	_ = Apply(s, "a", Action{Type: "clue", Text: "segredo"}, rng())
 	for _, p := range ViewFor(s, "b").Players {
-		if p.ID == "a" && p.Clue != "" {
-			t.Fatal("clue leaked before everyone wrote theirs")
+		if p.ID == "a" && p.Clue != "segredo" {
+			t.Fatal("others should see a clue as soon as it is written")
 		}
-	}
-	if ViewFor(s, "a").Players[0].Clue != "segredo" {
-		t.Fatal("author should see own clue")
 	}
 }
 
