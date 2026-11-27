@@ -65,6 +65,12 @@ const game: GameModule = {
 	KeyArt,
 	Match,
 	LobbyOptions,
+	screenshots: [
+		{ src: '/games/backdoor/screens/cracha.jpg', caption: 'Seu crachá secreto, só enquanto você segura' },
+		{ src: '/games/backdoor/screens/review.jpg', caption: 'O squad vira um PR: Approve ou Request changes' },
+		{ src: '/games/backdoor/screens/push.jpg', caption: 'Votos revelados e o push em segredo' },
+		{ src: '/games/backdoor/screens/postmortem.jpg', caption: 'Post-mortem: quem venceu e todos os crachás' }
+	],
 	// Zero-day and Freelancer need 7 people; the server checks it too.
 	whyNotStart: (room) =>
 		(room.options?.zero_day === true || room.options?.freelancer === true) && room.players.length < 7

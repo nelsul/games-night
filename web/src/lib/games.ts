@@ -60,6 +60,14 @@ export interface GameModule {
 	LobbyOptions?: Component<LobbyOptionsProps>;
 	/** A reason the host can't start yet (beyond the player count), or null. */
 	whyNotStart?: (room: Room) => string | null;
+	/** Phone screenshots for the game page's "Imagens" tab, kept in web/static/games/<id>/. */
+	screenshots?: Screenshot[];
+}
+
+export interface Screenshot {
+	/** Path under web/static, e.g. "/games/<id>/screens/review.jpg". */
+	src: string;
+	caption: string;
 }
 
 const found = import.meta.glob<GameModule>('./games/*/index.ts', { eager: true, import: 'default' });
