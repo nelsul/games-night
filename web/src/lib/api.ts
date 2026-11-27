@@ -84,6 +84,20 @@ export interface Me extends PublicUser {
 	email: string;
 	onboarded: boolean;
 	photos_enabled: boolean;
+	is_admin: boolean;
+}
+
+export type FeedbackKind = 'feedback' | 'bug' | 'idea';
+
+export interface FeedbackItem {
+	id: string;
+	kind: FeedbackKind;
+	body: string;
+	/** Null when it was sent anonymously. */
+	author: PublicUser | null;
+	created_at: string;
+	done_at: string | null;
+	done_by?: string;
 }
 
 export interface Game {

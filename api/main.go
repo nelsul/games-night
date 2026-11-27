@@ -83,14 +83,15 @@ func loadConfig() (Config, error) {
 }
 
 type App struct {
-	cfg          Config
-	db           *pgxpool.Pool
-	store        *Storage // nil when S3 is not configured: profile photos are then disabled
-	mail         *Mailer
-	hub          *Hub
-	bots         *botRunner
-	contributors *contributorsCache
-	log          *slog.Logger
+	cfg           Config
+	db            *pgxpool.Pool
+	store         *Storage // nil when S3 is not configured: profile photos are then disabled
+	mail          *Mailer
+	hub           *Hub
+	bots          *botRunner
+	contributors  *contributorsCache
+	feedbackLimit feedbackLimiter
+	log           *slog.Logger
 }
 
 func main() {
@@ -265,6 +266,13 @@ func (a *App) routes() http.Handler {
 			r.Post("/friend-requests/{id}/{action}", a.handleRequestAction)
 			r.Post("/invites/{id}/decline", a.handleDeclineInvite)
 
+			r.Post("/feedback", a.handleSendFeedback)
+			r.Route("/admin", func(r chi.Router) {
+				r.Use(a.requireAdmin)
+				r.Get("/feedback", a.handleListFeedback)
+				r.Post("/feedback/{id}/done", a.handleFinishFeedback)
+				r.Delete("/feedback/{id}", a.handleDeleteFeedback)
+			})
 			r.Get("/rooms", a.handleListRooms)
 			r.Post("/rooms", a.handleCreateRoom)
 			r.Get("/rooms/{code}", a.handleGetRoom)

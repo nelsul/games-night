@@ -114,6 +114,12 @@
 	</section>
 
 	<Contributors />
+
+	<a class="talk" href="/feedback">
+		<span class="talk-icons" aria-hidden="true"><Icon name="bug" size={20} /><Icon name="bulb" size={20} /></span>
+		<span><strong>Achou um bug ou tem uma ideia?</strong><span class="muted">Fale com a gente, até anônimo.</span></span>
+		<Icon name="next" size={18} />
+	</a>
 </main>
 
 <style>
@@ -247,6 +253,32 @@
 		padding: 8px;
 		font-size: 12px;
 		color: #d6d6d6;
+	}
+	.talk {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 12px 14px;
+		border-radius: 12px;
+		background: var(--surface);
+		color: #fff;
+		text-decoration: none;
+		margin-bottom: 8px;
+	}
+	.talk > span:nth-child(2) {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		font-size: 13px;
+	}
+	.talk strong {
+		font-size: 15px;
+	}
+	.talk-icons {
+		display: flex;
+		gap: 2px;
+		color: #e3b341;
 	}
 	.soon .poster-art {
 		background: var(--surface);
