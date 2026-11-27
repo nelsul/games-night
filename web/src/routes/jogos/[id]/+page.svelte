@@ -282,6 +282,8 @@
 		overflow-x: auto;
 		margin: 0 -16px;
 		padding: 0 16px 6px;
+		/* Snapping lines cards up with the padding, not with the screen's edge. */
+		scroll-padding-inline: 16px;
 		scroll-snap-type: x mandatory;
 		scrollbar-width: none;
 	}
