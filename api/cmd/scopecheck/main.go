@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -219,6 +218,19 @@ func run(base, title string, labels []string, changes []change, read func(string
 	return r
 }
 
+// subdirs lists the folders directly inside dir. (filepath.Glob("dir/*/") matches
+// nothing, which once left the game list silently empty.)
+func subdirs(dir string) []string {
+	entries, _ := os.ReadDir(dir)
+	var out []string
+	for _, e := range entries {
+		if e.IsDir() {
+			out = append(out, e.Name())
+		}
+	}
+	return out
+}
+
 func main() {
 	base := os.Getenv("BASE_SHA")
 	if base == "" {
@@ -232,11 +244,14 @@ func main() {
 			labels = append(labels, l)
 		}
 	}
-	dirs, _ := filepath.Glob("api/games/*/")
-	for _, d := range dirs {
-		if name := filepath.Base(d); name != "all" {
+	for _, name := range subdirs("api/games") {
+		if name != "all" {
 			gameSchemas = append(gameSchemas, name)
 		}
+	}
+	if len(gameSchemas) == 0 {
+		fmt.Println("::error::found no games in api/games; run from the repository root")
+		os.Exit(2)
 	}
 
 	out, err := exec.Command("git", "diff", "--name-status", "-M", base+"...HEAD").Output()
@@ -263,11 +278,7 @@ func main() {
 	}
 	r := run(base, title, labels, changes, read)
 
-	var webGames []string
-	mods, _ := filepath.Glob("web/src/lib/games/*/")
-	for _, d := range mods {
-		webGames = append(webGames, filepath.Base(d))
-	}
+	webGames := subdirs("web/src/lib/games")
 	for _, id := range gameSchemas {
 		if !slices.Contains(webGames, id) {
 			webGames = append(webGames, id)
