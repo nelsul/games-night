@@ -16,6 +16,7 @@ import Freelancer from './art/Freelancer.svelte';
 export const info: GameInfo = {
 	id: 'backdoor',
 	name: 'Backdoor',
+	creators: ['nelsul'],
 	tagline: 'Tem hacker no squad da Cudia',
 	tags: 'Dedução · Blefe · Vida de dev',
 	players: '5–12 jogadores',

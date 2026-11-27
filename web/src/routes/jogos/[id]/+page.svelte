@@ -54,6 +54,19 @@
 			<a class="btn btn-dark btn-block" href="/codigo"><Icon name="qr" size={18} />Entrar com código</a>
 			{#if error}<p class="error" role="alert">{error}</p>{/if}
 			<p class="synopsis">{game.synopsis}</p>
+			<div class="creators">
+				<span class="label">{game.creators.length === 1 ? 'Criador' : 'Criadores'}</span>
+				<ul>
+					{#each game.creators as login (login)}
+						<li>
+							<a href="https://github.com/{login}" target="_blank" rel="noopener noreferrer">
+								<img src="https://github.com/{login}.png?size=64" alt="" width="28" height="28" loading="lazy" />
+								@{login}
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</div>
 
 			<div class="tabs" role="tablist">
 				<button role="tab" aria-selected={tab === 'roles'} onclick={() => (tab = 'roles')}>Personagens</button>
@@ -166,6 +179,40 @@
 		font-size: 15px;
 		line-height: 1.5;
 		color: var(--text-2);
+	}
+	.creators {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 8px 12px;
+		font-size: 14px;
+	}
+	.creators .label {
+		color: var(--muted);
+	}
+	.creators ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	.creators a {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 3px 10px 3px 3px;
+		min-height: 34px;
+		border-radius: 999px;
+		background: var(--surface-2);
+		color: var(--text-2);
+		font-weight: 600;
+		text-decoration: none;
+	}
+	.creators img {
+		border-radius: 50%;
+		background: var(--surface);
 	}
 	.tabs {
 		display: flex;

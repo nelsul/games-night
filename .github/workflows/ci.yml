@@ -3,7 +3,8 @@ name: CI
 # Runs on every pull request (both jobs are required before merging into main)
 # and is reused by the deploy workflow before each deploy.
 #   check: format, vet, tests (including the database isolation tests) and builds.
-#   scope: the pull request is a hub change or a change to exactly one game.
+#   scope: the pull request is a hub change or a change to exactly one game, and
+#          every game names its creators (real GitHub users).
 on:
   pull_request:
     # edited/labeled: the scope check reads the title and labels.
@@ -77,11 +78,13 @@ jobs:
         with:
           go-version-file: api/go.mod
           cache-dependency-path: api/go.sum
-      - name: Hub or one game, and isolated
+      - name: Hub or one game, isolated, with its creators
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          # Read-only token: the check looks up each game's creators on GitHub.
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           (cd api && go build -o "$RUNNER_TEMP/scopecheck" ./cmd/scopecheck)
           "$RUNNER_TEMP/scopecheck"

@@ -18,3 +18,4 @@ Title: start with "hub: " for a hub change, or "<game id>: " for a change to one
 
 - [ ] `go test ./...` and `npm run check` pass
 - [ ] Migrations are new files only (none edited)
+- [ ] A new game lists its creators (GitHub usernames) in `info.creators`

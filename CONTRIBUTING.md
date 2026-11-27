@@ -36,7 +36,8 @@ A game pull request may not touch the hub or any other game, and a hub pull requ
 - a migration already on `main` is edited, renamed or deleted (add a new numbered file instead);
 - a game's SQL names anything outside its own schema (other than `REFERENCES public.rooms(id)` / `public.users(id)`), uses an unqualified table name, or uses functions, triggers, `DO` blocks, grants or roles;
 - hub SQL touches a game's schema;
-- a game imports another game's code (Go or web), or the hub's Go package.
+- a game imports another game's code (Go or web), or the hub's Go package;
+- a game doesn't name its creators (next section).
 
 ## Adding a game
 
@@ -47,9 +48,11 @@ A game lives entirely in its own folders, named after its **id** (lower case, le
 | `api/games/<id>/` | the Go package: rules engine with unit tests, plus the `games.Engine` implementation (see `api/games/games.go`) |
 | `api/games/<id>/migrations/` | `001_init.sql`, `002_….sql`…: tables in schema `<id>`, e.g. `CREATE TABLE <id>.matches (…)` |
 | `api/games/all/<id>.go` | one line, `import _ "github.com/nelsul/games-night/api/games/<id>"`, so the hub includes the game |
-| `web/src/lib/games/<id>/` | the screens; `index.ts` exports the game module (`GameModule` in `web/src/lib/games.ts`): info, title, poster art, match screen, optional lobby options |
+| `web/src/lib/games/<id>/` | the screens; `index.ts` exports the game module (`GameModule` in `web/src/lib/games.ts`): info (with its creators), title, poster art, match screen, optional lobby options |
 | `web/static/games/<id>/` | images, sounds and other files, if any |
 | `docs/games/<id>/` | rules and notes, if any |
+
+**Creators.** `info.creators` lists the GitHub username of everyone who made the game, without the @: `creators: ['nelsul', 'your-username']`. It is required, takes one or more people, and the game page shows them with a link to their GitHub. CI fails if the list is missing or empty, has a malformed or repeated name, or names an account that doesn't exist on GitHub. Whoever adds real work to a game later can add themselves in a PR for that game.
 
 The hub finds the game by itself (Go `init()` registration and Vite's `import.meta.glob`), so adding one never touches hub files. Backdoor (`api/games/backdoor`, `web/src/lib/games/backdoor`) is the reference: copy its structure.
 
