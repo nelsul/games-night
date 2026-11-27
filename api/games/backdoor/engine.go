@@ -7,6 +7,7 @@
 package backdoor
 
 import (
+	"fmt"
 	"math/rand/v2"
 	"slices"
 	"time"
@@ -20,14 +21,15 @@ const (
 	ProductOwner   Role = "product_owner"
 	Hacker         Role = "hacker"
 	SocialEngineer Role = "social_engineer"
-	ZeroDay        Role = "zero_day"
+	ZeroDay        Role = "zero_day" // hidden from the Analyst
+	Deepfake       Role = "deepfake" // looks like a second Analyst to the Product Owner
 	Freelancer     Role = "freelancer"
 )
 
 // IsHacker reports whether the role plays for the hackers.
 func (r Role) IsHacker() bool {
 	switch r {
-	case Hacker, SocialEngineer, ZeroDay, Freelancer:
+	case Hacker, SocialEngineer, ZeroDay, Deepfake, Freelancer:
 		return true
 	}
 	return false
@@ -80,6 +82,7 @@ func BackdoorsNeeded(players, sprint int) int {
 type Options struct {
 	ProductOwner bool `json:"product_owner"`
 	ZeroDay      bool `json:"zero_day"`
+	Deepfake     bool `json:"deepfake"`
 	Freelancer   bool `json:"freelancer"`
 	TimerSeconds int  `json:"timer_seconds"` // 0 (off), 60, 120 or 180
 }
@@ -93,6 +96,9 @@ func ruleErr(msg string) error { return &RuleError{Msg: msg} }
 
 // CheckLobby validates options while people are still joining.
 func (o Options) CheckLobby() error {
+	if o.Deepfake && !o.ProductOwner {
+		return ruleErr("O Deepfake só entra junto com o Product Owner: é para ele que o Deepfake se passa pelo Analista.")
+	}
 	switch o.TimerSeconds {
 	case 0, 60, 120, 180:
 		return nil
@@ -100,7 +106,20 @@ func (o Options) CheckLobby() error {
 	return ruleErr("Escolha um timer de 1, 2 ou 3 minutos, ou desligue.")
 }
 
-// CheckStart validates options for the actual table size.
+// specialHackers is how many hacker seats the options take: the Social Engineer,
+// always, plus every optional hacker role that is on.
+func (o Options) specialHackers() int {
+	n := 1
+	for _, on := range []bool{o.ZeroDay, o.Deepfake, o.Freelancer} {
+		if on {
+			n++
+		}
+	}
+	return n
+}
+
+// CheckStart validates options for the actual table size. Every role that is on must
+// be dealt, so the table needs enough hacker seats for all of them.
 func (o Options) CheckStart(players int) error {
 	if err := o.CheckLobby(); err != nil {
 		return err
@@ -110,6 +129,9 @@ func (o Options) CheckStart(players int) error {
 	}
 	if (o.ZeroDay || o.Freelancer) && players < SpecialHackersMin {
 		return ruleErr("Zero-day e Freelancer só entram com 7 pessoas ou mais. Desligue essas opções ou chame mais gente.")
+	}
+	if seats := hackersFor[players]; o.specialHackers() > seats {
+		return ruleErr(fmt.Sprintf("Com %d pessoas são %d hackers, e a Engenharia Social já ocupa uma vaga: não cabem todos os papéis de hacker ligados. Desligue algum ou chame mais gente.", players, seats))
 	}
 	return nil
 }
@@ -162,6 +184,9 @@ func Setup(players []string, opts Options, rng *rand.Rand, now time.Time) (*Stat
 	if opts.ZeroDay {
 		hackerRoles = append(hackerRoles, ZeroDay)
 	}
+	if opts.Deepfake {
+		hackerRoles = append(hackerRoles, Deepfake)
+	}
 	if opts.Freelancer {
 		hackerRoles = append(hackerRoles, Freelancer)
 	}
@@ -176,6 +201,9 @@ func Setup(players []string, opts Options, rng *rand.Rand, now time.Time) (*Stat
 		devRoles = append(devRoles, Dev)
 	}
 	deck := append(hackerRoles, devRoles...)
+	if len(deck) != n { // CheckStart makes room for every role that is on
+		return nil, fmt.Errorf("backdoor: dealt %d roles for %d players", len(deck), n)
+	}
 	rng.Shuffle(len(deck), func(i, j int) { deck[i], deck[j] = deck[j], deck[i] })
 
 	s := &State{

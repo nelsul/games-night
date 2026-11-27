@@ -1,6 +1,7 @@
 // Backdoor, as the hub sees it: copy, art and screens. The hub finds this file by
 // itself (lib/games/registry.ts), so the game never has to edit hub code.
 import type { GameInfo, GameModule } from '$lib/games';
+import { optionsProblem, type Options } from './types';
 import Match from './Backdoor.svelte';
 import LobbyOptions from './LobbyOptions.svelte';
 import Title from './Title.svelte';
@@ -11,6 +12,7 @@ import Hacker from './art/Hacker.svelte';
 import Social from './art/Social.svelte';
 import ProductOwner from './art/ProductOwner.svelte';
 import ZeroDay from './art/ZeroDay.svelte';
+import Deepfake from './art/Deepfake.svelte';
 import Freelancer from './art/Freelancer.svelte';
 
 export const info: GameInfo = {
@@ -52,6 +54,12 @@ export const info: GameInfo = {
 		},
 		{ name: 'Zero-day', team: 'Time Hackers', tone: 'bad', art: ZeroDay, text: 'Opcional, 7+. Um hacker que o Analista não enxerga.' },
 		{
+			name: 'Deepfake',
+			team: 'Time Hackers', tone: 'bad',
+			art: Deepfake,
+			text: 'Opcional, com o Product Owner. O PO vê dois possíveis Analistas: o verdadeiro e o Deepfake.'
+		},
+		{
 			name: 'Freelancer',
 			team: 'Time Hackers', tone: 'bad',
 			art: Freelancer,
@@ -72,11 +80,8 @@ const game: GameModule = {
 		{ src: '/games/backdoor/screens/push.jpg', caption: 'Votos revelados e o push em segredo' },
 		{ src: '/games/backdoor/screens/postmortem.jpg', caption: 'Post-mortem: quem venceu e todos os crachás' }
 	],
-	// Zero-day and Freelancer need 7 people; the server checks it too.
-	whyNotStart: (room) =>
-		(room.options?.zero_day === true || room.options?.freelancer === true) && room.players.length < 7
-			? 'Zero-day e Freelancer precisam de 7 pessoas'
-			: null
+	// Every role that is on must fit the table; the server checks it too.
+	whyNotStart: (room) => optionsProblem((room.options ?? {}) as Partial<Options>, room.players.length)
 };
 
 export default game;

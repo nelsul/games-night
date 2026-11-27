@@ -1,18 +1,28 @@
 <script lang="ts">
 	// The host turns optional roles and the timer on or off; everyone else sees what's on.
 	import { api, ApiError, type Room } from '$lib/api';
-	import { optionInfo, timerChoices, type Options } from './types';
+	import { hackersFor, optionInfo, optionsProblem, timerChoices, type OptionKey, type Options } from './types';
 
 	let { room, isHost, onchange }: { room: Room; isHost: boolean; onchange: (r: Room) => void } = $props();
 
 	const opts = $derived<Options>({
 		product_owner: false,
 		zero_day: false,
+		deepfake: false,
 		freelancer: false,
 		timer_seconds: 0,
 		...((room.options ?? {}) as Partial<Options>)
 	});
 	const count = $derived(room.players.length);
+	const problem = $derived(optionsProblem(opts, count));
+
+	// Turning the Product Owner off takes the Deepfake with it (it only exists for the PO).
+	function toggle(key: OptionKey) {
+		const on = !opts[key];
+		const patch: Partial<Options> = { [key]: on };
+		for (const o of optionInfo) if (!on && o.needs === key) patch[o.key] = false;
+		save(patch);
+	}
 	let error = $state('');
 	let busy = $state(false);
 
@@ -41,9 +51,10 @@
 		{#each optionInfo as o (o.key)}
 			{@const on = opts[o.key]}
 			{@const tooFew = count < o.min}
+			{@const locked = !!o.needs && !opts[o.needs]}
 			<li>
 				<div class="text">
-					<span class="name">{o.name}{#if o.min > 5}<span class="min"> · 7+ pessoas</span>{/if}</span>
+					<span class="name">{o.name}{#if o.min > 5}<span class="min">&nbsp;· 7+ pessoas</span>{/if}{#if o.needs}<span class="min">&nbsp;· com o Product Owner</span>{/if}</span>
 					<span class="desc">{o.text}</span>
 					{#if on && tooFew}<span class="warn">Precisa de pelo menos {o.min} pessoas para começar.</span>{/if}
 				</div>
@@ -54,8 +65,8 @@
 						role="switch"
 						aria-checked={on}
 						aria-label={o.name}
-						disabled={busy}
-						onclick={() => save({ [o.key]: !on })}
+						disabled={busy || (locked && !on)}
+						onclick={() => toggle(o.key)}
 					><span></span></button>
 				{:else}
 					<span class="state" class:on>{on ? 'Ligado' : 'Desligado'}</span>
@@ -86,6 +97,11 @@
 			{/if}
 		</li>
 	</ul>
+	<p class="seats">
+		Todo papel ligado entra na partida. Com {count} {count === 1 ? 'pessoa' : 'pessoas'} são {hackersFor[count] ?? '?'} hackers, e a
+		Engenharia Social já ocupa uma vaga.
+	</p>
+	{#if problem}<p class="warn" role="status">{problem}.</p>{/if}
 	{#if error}<p class="error" role="alert">{error}</p>{/if}
 </section>
 
@@ -148,6 +164,12 @@
 		font-size: 13px;
 	}
 	.desc {
+		font-size: 13px;
+		color: var(--muted);
+		line-height: 1.4;
+	}
+	.seats {
+		margin: 4px 0 0;
 		font-size: 13px;
 		color: var(--muted);
 		line-height: 1.4;

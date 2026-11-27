@@ -8,8 +8,9 @@ import (
 // Known is someone a player knows something about from their badge.
 type Known struct {
 	ID string `json:"id"`
-	// As is what this player sees them as: hacker, social_engineer or zero_day (for
-	// hackers and the Analyst), or analyst_candidate (for the Product Owner).
+	// As is what this player sees them as: hacker, social_engineer, zero_day or deepfake
+	// (for hackers and the Analyst), or analyst_candidate (for the Product Owner: the
+	// Analyst and, when it's in play, the Deepfake).
 	As string `json:"as"`
 }
 
@@ -134,11 +135,11 @@ func knowledge(s *State, player string) []Known {
 		switch {
 		case role == Analyst && other.IsHacker() && other != ZeroDay:
 			out = append(out, Known{ID: p, As: "hacker"})
-		case role == ProductOwner && (other == Analyst || other == ZeroDay):
+		case role == ProductOwner && (other == Analyst || other == Deepfake):
 			out = append(out, Known{ID: p, As: "analyst_candidate"})
 		case role.IsHacker() && role != Freelancer && other.IsHacker() && other != Freelancer:
 			as := "hacker"
-			if other == SocialEngineer || other == ZeroDay {
+			if other == SocialEngineer || other == ZeroDay || other == Deepfake {
 				as = string(other)
 			}
 			out = append(out, Known{ID: p, As: as})

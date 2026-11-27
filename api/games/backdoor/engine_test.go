@@ -347,8 +347,9 @@ func TestDeploysLeadToTheSocialEngineersGuess(t *testing.T) {
 }
 
 func TestViewKeepsSecrets(t *testing.T) {
-	s := setup(t, 10, Options{ZeroDay: true, Freelancer: true, ProductOwner: true}, 10)
+	s := setup(t, 10, Options{ZeroDay: true, Deepfake: true, Freelancer: true, ProductOwner: true}, 10)
 	zero := byRole(s, ZeroDay)[0]
+	deep := byRole(s, Deepfake)[0]
 	free := byRole(s, Freelancer)[0]
 	analyst := byRole(s, Analyst)[0]
 	se := byRole(s, SocialEngineer)[0]
@@ -376,12 +377,12 @@ func TestViewKeepsSecrets(t *testing.T) {
 			}
 		case Analyst:
 			got := ids(v.Me.Knows)
-			if slices.Contains(got, zero) || len(got) != 3 || !slices.Contains(got, free) {
-				t.Errorf("Analyst sees %v (zero-day %s, freelancer %s)", got, zero, free)
+			if slices.Contains(got, zero) || len(got) != 3 || !slices.Contains(got, free) || !slices.Contains(got, deep) {
+				t.Errorf("Analyst sees %v (zero-day %s, deepfake %s, freelancer %s)", got, zero, deep, free)
 			}
 		case ProductOwner:
 			got := ids(v.Me.Knows)
-			want := []string{analyst, zero}
+			want := []string{analyst, deep} // the Zero-day hides from the Analyst, not from the PO
 			slices.Sort(want)
 			if !slices.Equal(got, want) {
 				t.Errorf("Product Owner sees %v, want %v", got, want)
@@ -391,7 +392,7 @@ func TestViewKeepsSecrets(t *testing.T) {
 					t.Errorf("Product Owner learns too much: %+v", k)
 				}
 			}
-		case Hacker, SocialEngineer, ZeroDay:
+		case Hacker, SocialEngineer, ZeroDay, Deepfake:
 			got := ids(v.Me.Knows)
 			if slices.Contains(got, free) || len(got) != 2 {
 				t.Errorf("%s (%s) sees %v", p, s.Roles[p], got)
@@ -487,5 +488,62 @@ func TestScrumMasterOpensCommitsOneByOne(t *testing.T) {
 	}
 	if v := ViewFor(s, other); len(v.Commits) != 0 {
 		t.Fatal("commits still shown in the next sprint")
+	}
+}
+
+// Every optional role that is on is always dealt, exactly once, at every table size
+// where the options are allowed; combinations that don't fit are refused up front.
+func TestEveryRoleThatIsOnIsDealt(t *testing.T) {
+	for n := MinPlayers; n <= MaxPlayers; n++ {
+		for mask := range 16 {
+			o := Options{ProductOwner: mask&1 != 0, ZeroDay: mask&2 != 0, Deepfake: mask&4 != 0, Freelancer: mask&8 != 0}
+			for seed := range uint64(5) {
+				s, err := Setup(players(n), o, rand.New(rand.NewPCG(seed, uint64(n))), t0)
+				if err != nil {
+					if o.CheckStart(n) == nil {
+						t.Fatalf("n=%d %+v: setup failed: %v", n, o, err)
+					}
+					continue
+				}
+				count := map[Role]int{}
+				for _, r := range s.Roles {
+					count[r]++
+				}
+				want := map[Role]bool{Analyst: true, SocialEngineer: true, ProductOwner: o.ProductOwner, ZeroDay: o.ZeroDay, Deepfake: o.Deepfake, Freelancer: o.Freelancer}
+				for r, on := range want {
+					if (on && count[r] != 1) || (!on && count[r] != 0) {
+						t.Fatalf("n=%d %+v: %s dealt %d times", n, o, r, count[r])
+					}
+				}
+				hackers := 0
+				for _, r := range s.Roles {
+					if r.IsHacker() {
+						hackers++
+					}
+				}
+				if hackers != hackersFor[n] || len(s.Roles) != n {
+					t.Fatalf("n=%d %+v: %d hackers, %d roles", n, o, hackers, len(s.Roles))
+				}
+			}
+		}
+	}
+}
+
+func TestOptionCombinationsThatDontFit(t *testing.T) {
+	if err := (Options{Deepfake: true}).CheckLobby(); err == nil {
+		t.Error("Deepfake without the Product Owner")
+	}
+	if err := (Options{Deepfake: true, ProductOwner: true}).CheckStart(5); err != nil {
+		t.Errorf("Deepfake with 5 people: %v", err)
+	}
+	// 7 to 9 people: 3 hackers, so the Social Engineer plus two optional hackers at most.
+	if err := (Options{ProductOwner: true, ZeroDay: true, Deepfake: true, Freelancer: true}).CheckStart(9); err == nil {
+		t.Error("four hacker roles for three hacker seats")
+	}
+	if err := (Options{ProductOwner: true, ZeroDay: true, Deepfake: true, Freelancer: true}).CheckStart(10); err != nil {
+		t.Errorf("every role with 10 people: %v", err)
+	}
+	if err := (Options{ZeroDay: true}).CheckStart(6); err == nil {
+		t.Error("Zero-day with 6 people")
 	}
 }
