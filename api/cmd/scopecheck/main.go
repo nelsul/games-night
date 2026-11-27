@@ -9,7 +9,8 @@
 //
 // It also checks that migrations already on main are never edited, that a game's SQL
 // only touches its own schema (the database enforces it too: see api/gamedb.go), that
-// hub SQL never touches a game's schema, and that games don't import each other.
+// hub SQL never touches a game's schema, that games don't import each other, and
+// that every game names its creators (creators.go).
 // A change that has to span the hub and games (a refactor of the game interface) can
 // pass with the "hub+games" label, which only maintainers can set.
 //
@@ -261,6 +262,23 @@ func main() {
 		return string(b)
 	}
 	r := run(base, title, labels, changes, read)
+
+	var webGames []string
+	mods, _ := filepath.Glob("web/src/lib/games/*/")
+	for _, d := range mods {
+		webGames = append(webGames, filepath.Base(d))
+	}
+	for _, id := range gameSchemas {
+		if !slices.Contains(webGames, id) {
+			webGames = append(webGames, id)
+		}
+	}
+	slices.Sort(webGames)
+	var lookup userLookup
+	if os.Getenv("CREATORS_OFFLINE") == "" {
+		lookup = githubLookup(os.Getenv("GITHUB_TOKEN"))
+	}
+	checkCreators(webGames, read, lookup, &r)
 
 	summary := []string{"## Scope check", ""}
 	for _, n := range r.notes {

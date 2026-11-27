@@ -25,6 +25,11 @@ export interface GameInfo {
 	synopsis: string;
 	howTo: string[];
 	roles: Role[];
+	/**
+	 * GitHub usernames (without @) of everyone who made the game, shown on its page.
+	 * Required, at least one; CI checks that each is a real GitHub user.
+	 */
+	creators: [string, ...string[]];
 }
 
 /** Props the hub passes to a game's match screen. `match` is the game's own view. */
