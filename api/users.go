@@ -24,6 +24,7 @@ type Me struct {
 	Email         string `json:"email"`
 	Onboarded     bool   `json:"onboarded"`
 	PhotosEnabled bool   `json:"photos_enabled"`
+	IsAdmin       bool   `json:"is_admin"`
 }
 
 // publicUser builds the JSON for a person from scanned columns.
@@ -35,8 +36,8 @@ func (a *App) loadMe(ctx context.Context, id string) (Me, error) {
 	var m Me
 	var name string
 	var handle, avatar *string
-	err := a.db.QueryRow(ctx, `SELECT id, email, name, handle, avatar_key FROM users WHERE id = $1`, id).
-		Scan(&m.ID, &m.Email, &name, &handle, &avatar)
+	err := a.db.QueryRow(ctx, `SELECT id, email, name, handle, avatar_key, is_admin FROM users WHERE id = $1`, id).
+		Scan(&m.ID, &m.Email, &name, &handle, &avatar, &m.IsAdmin)
 	if err != nil {
 		return m, err
 	}

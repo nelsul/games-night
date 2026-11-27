@@ -19,6 +19,8 @@ Terms used in code, issues and PRs. The site shows the Portuguese word in parent
 - **Match** (*partida*): one play-through of a game inside a room.
 - **Room chat** (*chat da sala*): messages everyone in the room sees, in the lobby and during matches (`room_messages`).
 - **Snapshot**: the full state sent over the WebSocket. Clients never merge diffs.
+- **Feedback** (*feedback*): a message someone sends from the site, of one of three kinds: **feedback**, **bug** or **game idea** (*ideia de jogo*). Sent with the person's name or **anonymously** (*anônimo*); anonymous feedback stores no user at all. Only admins read it.
+- **Admin**: a person with `users.is_admin`. For now admins can only see feedback, mark it **done** (*concluído*) or delete it. The first admin is @nelsul (migration `007_feedback.sql`).
 
 ## Backdoor
 

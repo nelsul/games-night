@@ -24,7 +24,12 @@
 		| 'send'
 		| 'sound'
 		| 'mute'
-		| 'smile';
+		| 'smile'
+		| 'bug'
+		| 'bulb'
+		| 'mask'
+		| 'inbox'
+		| 'next';
 	let { name, size = 24, label }: { name: Name; size?: number; label?: string } = $props();
 </script>
 
@@ -64,6 +69,11 @@
 	{:else if name === 'sound'}<path d="M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" />
 	{:else if name === 'mute'}<path d="M4 9h4l5-4v14l-5-4H4zM16 9l5 6M21 9l-5 6" />
 	{:else if name === 'smile'}<circle cx="12" cy="12" r="9" /><path d="M8 14c1 1.5 2.4 2.2 4 2.2s3-.7 4-2.2M9 9.5h.01M15 9.5h.01" />
+	{:else if name === 'bug'}<path d="M8 8a4 4 0 0 1 8 0M7 9h10v5a5 5 0 0 1-10 0zM12 11v8M3 13h4M17 13h4M4 7l3 2M20 7l-3 2M4 20l3-3M20 20l-3-3" />
+	{:else if name === 'bulb'}<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z" />
+	{:else if name === 'mask'}<path d="M3 7c3-1.5 6-1.5 9 0 3-1.5 6-1.5 9 0v4c0 4-3 7-6 7-1.5 0-2.3-1-3-2-.7 1-1.5 2-3 2-3 0-6-3-6-7z" /><path d="M7 11h2M15 11h2" />
+	{:else if name === 'inbox'}<path d="M3 13l3-8h12l3 8v6H3zM3 13h5l1 2h6l1-2h5" />
+	{:else if name === 'next'}<path d="M9 18l6-6-6-6" />
 	{:else if name === 'door'}<path d="M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17M3 21h18M14 12h.01" />
 	{/if}
 </svg>

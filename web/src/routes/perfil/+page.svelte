@@ -94,6 +94,17 @@
 		</label>
 	</section>
 
+	<nav class="links" aria-label="Mais">
+		<a href="/feedback">
+			<Icon name="chat" size={20} /><span><strong>Feedback, bugs e ideias</strong><span class="muted">Conte o que achou ou sugira um jogo.</span></span><Icon name="next" size={18} />
+		</a>
+		{#if session.me?.is_admin}
+			<a href="/admin/feedbacks">
+				<Icon name="inbox" size={20} /><span><strong>Feedbacks recebidos</strong><span class="muted">Só admins veem.</span></span><Icon name="next" size={18} />
+			</a>
+		{/if}
+	</nav>
+
 	<button type="button" class="btn btn-ghost btn-block" onclick={logout}><Icon name="logout" size={20} />Sair</button>
 </main>
 
@@ -173,6 +184,35 @@
 	}
 	.pref input:checked::after {
 		transform: translateX(20px);
+	}
+	.links {
+		display: flex;
+		flex-direction: column;
+		background: var(--surface);
+		border-radius: var(--radius);
+		overflow: hidden;
+	}
+	.links a {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 60px;
+		padding: 8px 12px;
+		color: #fff;
+		text-decoration: none;
+	}
+	.links a + a {
+		border-top: 1px solid var(--line);
+	}
+	.links a > span {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		font-size: 13px;
+	}
+	.links strong {
+		font-size: 15px;
 	}
 	.link {
 		align-self: center;
