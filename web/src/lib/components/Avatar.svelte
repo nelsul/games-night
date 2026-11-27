@@ -40,6 +40,8 @@
 	<img
 		src={user.avatar_url}
 		alt=""
+		loading="lazy"
+		decoding="async"
 		width={size}
 		height={size}
 		style="width: {size}px; height: {size}px; border-radius: {radius}px; object-fit: cover; display: block; flex-shrink: 0"

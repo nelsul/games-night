@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,7 +21,24 @@ import (
 type Storage struct {
 	client *minio.Client
 	bucket string
+
+	// Presigned URLs carry a signature that changes every second, so handing out a
+	// fresh one each time makes browsers download the same photo again and again.
+	// Each key keeps one URL until it's close to expiring.
+	mu   sync.Mutex
+	urls map[string]signedURL
 }
+
+type signedURL struct {
+	url     string
+	expires time.Time
+}
+
+const (
+	urlTTL       = 6 * time.Hour
+	urlReuse     = 5 * time.Hour // hand out the same URL for this long, then sign a new one
+	cacheForever = "public, max-age=31536000, immutable"
+)
 
 const maxImageBytes = 8 << 20
 
@@ -97,7 +115,9 @@ func isHEIC(b []byte) bool {
 
 func (s *Storage) Put(ctx context.Context, prefix, ext, ctype string, data []byte) (string, error) {
 	key := fmt.Sprintf("%s/%s.%s", prefix, uuid.NewString(), ext)
-	_, err := s.client.PutObject(ctx, s.bucket, key, bytes.NewReader(data), int64(len(data)), minio.PutObjectOptions{ContentType: ctype})
+	// Keys are unique per upload and never rewritten, so browsers may keep them forever.
+	_, err := s.client.PutObject(ctx, s.bucket, key, bytes.NewReader(data), int64(len(data)),
+		minio.PutObjectOptions{ContentType: ctype, CacheControl: cacheForever})
 	return key, err
 }
 
@@ -113,9 +133,25 @@ func (s *Storage) URL(ctx context.Context, key *string) string {
 	if s == nil || key == nil || *key == "" {
 		return ""
 	}
-	u, err := s.client.PresignedGetObject(ctx, s.bucket, *key, 6*time.Hour, url.Values{})
+	now := time.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.urls == nil {
+		s.urls = map[string]signedURL{}
+	}
+	if c, ok := s.urls[*key]; ok && now.Before(c.expires.Add(urlReuse-urlTTL)) {
+		return c.url
+	}
+	u, err := s.client.PresignedGetObject(ctx, s.bucket, *key, urlTTL, url.Values{
+		// Lets R2 send the long cache header even for photos uploaded before it was set.
+		"response-cache-control": []string{cacheForever},
+	})
 	if err != nil {
 		return ""
 	}
+	if len(s.urls) > 10_000 { // a safety valve; there are far fewer photos than this
+		clear(s.urls)
+	}
+	s.urls[*key] = signedURL{url: u.String(), expires: now.Add(urlTTL)}
 	return u.String()
 }
