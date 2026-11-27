@@ -20,7 +20,8 @@
 		onroom,
 		onchat,
 		onleave,
-		unread = 0
+		unread = 0,
+		onplayer
 	}: {
 		room: Room;
 		match: MatchView;
@@ -30,6 +31,7 @@
 		onchat: () => void;
 		onleave: () => void;
 		unread?: number;
+		onplayer?: (userId: string) => void;
 	} = $props();
 
 	const onlineCount = $derived(room.players.filter((p) => p.online).length);
@@ -189,7 +191,9 @@
 	<div class="presence" aria-label="Quem está na partida">
 		<span class="faces">
 			{#each room.players as p (p.id)}
-				<span class="face" title={name(p.id)}><Avatar user={p} size={24} online={p.online} /></span>
+				<button class="face" onclick={() => onplayer?.(p.id)} aria-label="Ver {name(p.id)}"
+					><Avatar user={p} size={24} online={p.online} /></button
+				>
 			{/each}
 		</span>
 		<span class="muted tiny">{onlineCount}/{room.players.length} online</span>
@@ -409,9 +413,11 @@
 				{#each match.players as p, i (p.id)}
 					{@const role = match.roles?.[p.id] ?? 'dev'}
 					<li in:fly={{ x: -16, duration: ms(260), delay: ms(150 + i * 90) }}>
-						<Avatar user={people[p.id]} size={32} />
-						<span class="pname">{name(p.id)}</span>
-						<span class="role-tag" class:hk={roleInfo[role].team === 'hackers'}>{roleInfo[role].name}</span>
+						<button class="reveal-row" onclick={() => onplayer?.(p.id)} aria-label="Ver {name(p.id)}">
+							<Avatar user={people[p.id]} size={32} />
+							<span class="pname">{name(p.id)}</span>
+							<span class="role-tag" class:hk={roleInfo[role].team === 'hackers'}>{roleInfo[role].name}</span>
+						</button>
 					</li>
 				{/each}
 			</ul>
@@ -521,6 +527,22 @@
 	}
 	.face {
 		display: inline-flex;
+		border: none;
+		background: none;
+		padding: 2px;
+		border-radius: 6px;
+		cursor: pointer;
+	}
+	.reveal-row {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		border: none;
+		background: none;
+		padding: 0;
+		text-align: left;
+		cursor: pointer;
 	}
 	.phase-body {
 		flex: 1;
