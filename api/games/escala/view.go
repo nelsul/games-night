@@ -68,10 +68,8 @@ func ViewFor(s *State, user string) *MatchView {
 		pv := PlayerView{ID: p, Placed: placed[p]}
 		if c, ok := s.Clues[p]; ok {
 			pv.HasClue = true
-			// A clue stays private until everybody has written theirs.
-			if s.Phase != PhaseClues || p == user {
-				pv.Clue = c
-			}
+			// Clues are public as soon as they are written, so the table can avoid repeating each other.
+			pv.Clue = c
 		}
 		v.Players = append(v.Players, pv)
 	}

@@ -5,7 +5,7 @@
 	// Look: the theme is a big poster card, your secret number is a big playing card you can
 	// flip face down, the table's line is made of big cards that flip open on the reveal, and
 	// a dock at the bottom keeps your card and the main button within thumb reach.
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { flip } from 'svelte/animate';
 	import { fade, fly, scale, slide } from 'svelte/transition';
 	import { cubicOut, backOut } from 'svelte/easing';
@@ -49,10 +49,38 @@
 
 	let error = $state('');
 	let busy = $state(false);
-	let faceDown = $state(false);
+	// The secret card starts face down, so nobody sees the number over a shoulder.
+	let faceDown = $state(true);
 	let clue = $state('');
 	let editing = $state(false);
 	let confirmStop = $state(false);
+
+	// Clues other people write show up for a few seconds under the card, so nobody repeats them.
+	type Note = { id: number; who: string; text: string };
+	let notes = $state<Note[]>([]);
+	let noteSeq = 0;
+	let seen: Record<string, string> = {};
+	let seenKey = '';
+	$effect(() => {
+		const round = match.round;
+		const swapSeq = match.swap_seq;
+		const key = round + ':' + swapSeq;
+		const fresh: Note[] = [];
+		if (key !== seenKey) {
+			seen = {};
+			notes = [];
+			seenKey = key;
+		}
+		for (const p of match.players) {
+			const text = p.clue ?? '';
+			if (p.id !== me && text && seen[p.id] !== text) fresh.push({ id: ++noteSeq, who: p.id, text });
+			seen[p.id] = text;
+		}
+		for (const n of fresh) {
+			notes = [...untrack(() => notes).filter((o) => o.who !== n.who), n].slice(-3);
+			setTimeout(() => (notes = notes.filter((o) => o.id !== n.id)), 5000);
+		}
+	});
 
 	const myPlayer = $derived(player(me));
 	const myPos = $derived(match.line.findIndex((c) => c.player === me));
@@ -152,6 +180,7 @@
 		const round = match.round;
 		if (prevPhase !== null) {
 			if (phase === 'clues' && round !== prevRound) {
+				faceDown = true;
 				sound('turn');
 				haptic('tap');
 				announcer.push({
@@ -407,6 +436,14 @@
 						</span>
 					</button>
 					<span class="hint">{faceDown ? 'Toque para virar a carta' : 'Seu número secreto · toque para esconder'}</span>
+					<div class="notes" aria-live="polite">
+						{#each notes as n (n.id)}
+							<div class="note" in:fly={{ y: 16, duration: motion(260), easing: backOut }} out:fade={{ duration: motion(300) }} animate:flip={{ duration: motion(200) }}>
+								<Avatar user={people[n.who]} size={28} />
+								<span><strong>{first(n.who)}</strong> “{n.text}”</span>
+							</div>
+						{/each}
+					</div>
 				</section>
 
 				<section class="panel">
@@ -414,7 +451,7 @@
 					<p class="small">Descreva o seu número usando o tema. Não vale falar números.</p>
 					{#if myPlayer?.has_clue && !editing}
 						<p class="sent"><Icon name="check" size={18} /> Sua dica: <strong>“{myPlayer.clue}”</strong></p>
-						<button class="btn ghost" onclick={editClue}>Trocar a dica</button>
+						<button class="edit-btn" onclick={editClue}><Icon name="rotate" size={18} />Trocar a dica</button>
 					{:else}
 						{@render clueForm()}
 					{/if}
@@ -526,7 +563,7 @@
 									<span class="small">Sua dica</span>
 									<strong>“{myPlayer?.clue}”</strong>
 								</span>
-								<button class="ghost" onclick={editClue}>Trocar</button>
+								<button class="edit-btn small-btn" onclick={editClue}><Icon name="rotate" size={16} />Trocar</button>
 							</div>
 						{/if}
 						{#if !editing}
@@ -676,6 +713,27 @@
 		font-size: 11px;
 		font-weight: 700;
 		padding: 1px 5px;
+	}
+	.notes {
+		width: 100%;
+		min-height: 56px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 6px;
+		margin-top: 10px;
+	}
+	.note {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		max-width: 100%;
+		padding: 6px 14px 6px 6px;
+		border-radius: 999px;
+		background: #ffffff1c;
+		border: 1px solid #ffffff33;
+		font-size: 14px;
+		overflow-wrap: anywhere;
 	}
 
 	/* ---- steps ---- */
@@ -1383,6 +1441,33 @@
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
+	}
+	.edit-btn {
+		min-height: 48px;
+		padding: 0 18px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		border-radius: 999px;
+		border: 0;
+		background: var(--gold);
+		color: #3a1a22;
+		font: inherit;
+		font-size: 15px;
+		font-weight: 800;
+		box-shadow: 0 3px 0 #0006;
+		flex: none;
+		transition: transform 0.12s, box-shadow 0.12s;
+	}
+	.edit-btn.small-btn {
+		min-height: 44px;
+		padding: 0 14px;
+		font-size: 14px;
+	}
+	.edit-btn:active {
+		transform: translateY(2px);
+		box-shadow: 0 1px 0 #0006;
 	}
 	.dock-row {
 		display: flex;
