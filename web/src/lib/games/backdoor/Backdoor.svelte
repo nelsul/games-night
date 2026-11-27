@@ -2,7 +2,7 @@
 	// A Backdoor match. The look borrows from phone settings screens (big titles, actions
 	// at the bottom) and code review tools (PRs, diffs, pipelines). Everything shown comes
 	// from the server's view for this player; this file never decides a rule.
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { fly, scale } from 'svelte/transition';
 	import Title from './Title.svelte';
 	import { feel, haptic, ms, saveFeel, sound } from '$lib/feel.svelte';
@@ -86,9 +86,21 @@
 	});
 
 	// The first queued announcement that still fits the match; older ones are skipped.
-	const announcing = $derived(announcements.find((a) => a.phase === match.phase));
+	// The one on screen stays its full time even if the match moves on meanwhile; the
+	// next one is the first queued announcement that still fits the match (older ones
+	// are skipped, so the table never watches a backlog).
+	let announcing = $state<Announcement | null>(null);
+	function takeNext(): Announcement | null {
+		const next = announcements.find((a) => a.phase === match.phase);
+		announcements = next ? announcements.slice(announcements.indexOf(next) + 1) : [];
+		return next ?? null;
+	}
+	$effect(() => {
+		if (!announcing && announcements.length) announcing = untrack(takeNext);
+	});
+	// Straight to the next one, so the backdrop stays up between announcements.
 	function closeAnnouncement() {
-		announcements = announcing ? announcements.slice(announcements.indexOf(announcing) + 1) : [];
+		announcing = takeNext();
 	}
 
 	function announcementFor(phase: string, sprintLabel: string, mine: boolean): Announcement | null {
@@ -102,7 +114,7 @@
 					text: mine ? `Monte um squad de ${match.squad_size} pessoas.` : `Montando um squad de ${match.squad_size} pessoas.`,
 					faces: [match.leader],
 					tone: 'turn',
-					hold: mine ? 2300 : 1900
+					hold: mine ? 5500 : 5000
 				};
 			case 'review':
 				return {
@@ -139,7 +151,7 @@
 						: `${name(match.social_engineer ?? '')}, a Engenharia Social, vai tentar achar o Analista.`,
 					faces: match.social_engineer ? [match.social_engineer] : [],
 					tone: 'bad',
-					hold: 2400
+					hold: 6000
 				};
 			case 'over':
 				return {
@@ -147,7 +159,7 @@
 					kicker: 'Fim de jogo',
 					title: match.winner === 'devs' ? 'Os devs venceram' : 'Os hackers venceram',
 					tone: match.winner === 'devs' ? 'good' : 'bad',
-					hold: 2400
+					hold: 6000
 				};
 		}
 		return null;
@@ -542,7 +554,7 @@
 </div>
 
 {#if announcing}
-	<Announce item={announcing} {people} hurry={announcements.at(-1) !== announcing} onclose={closeAnnouncement} />
+	<Announce item={announcing} {people} onclose={closeAnnouncement} />
 {/if}
 
 {#if showBadge}
