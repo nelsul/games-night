@@ -343,12 +343,12 @@
 <style>
 	.lp {
 		--gold: #ffb347;
-		--ink: #10213a;
+		--ink: #1f1038;
 		position: relative;
 		overflow-x: clip;
 		background:
-			radial-gradient(120% 50% at 50% -10%, #1f4a7a 0%, transparent 60%),
-			linear-gradient(180deg, #0b1626, #10213a 60%, #13294a);
+			radial-gradient(120% 50% at 50% -10%, #5a2a8a 0%, transparent 60%),
+			linear-gradient(180deg, #140a24, #1f1038 60%, #2a1650);
 		color: #f3f7ff;
 		min-height: 100dvh;
 		max-width: 560px;
@@ -359,7 +359,7 @@
 		gap: 14px;
 	}
 	:global(body:has(.lp)) {
-		background: #0b1626;
+		background: #140a24;
 	}
 	.phase {
 		display: flex;
@@ -390,14 +390,14 @@
 		display: grid;
 		place-items: center;
 		border-radius: 999px;
-		border: 1px solid #36537c;
+		border: 1px solid #5a3a8a;
 		background: transparent;
 		color: inherit;
 		transition: transform 0.12s, background 0.2s;
 	}
 	.pill:active {
 		transform: scale(0.92);
-		background: #1f3a5e;
+		background: #3a2268;
 	}
 	.badge {
 		position: absolute;
@@ -422,7 +422,7 @@
 		position: relative;
 		padding: 10px;
 		border-radius: 14px;
-		background: #14294a;
+		background: #2a1850;
 		border: 2px solid transparent;
 		display: flex;
 		flex-direction: column;
@@ -454,7 +454,7 @@
 		font-size: 10px;
 		text-transform: uppercase;
 		letter-spacing: 0.5px;
-		color: #9fb6d6;
+		color: #c9aee8;
 	}
 	.faces {
 		display: flex;
@@ -481,8 +481,8 @@
 
 	/* ---- panels ---- */
 	.panel {
-		background: #14294a;
-		border: 1px solid #25456f;
+		background: #2a1850;
+		border: 1px solid #4a2a7a;
 		border-radius: 18px;
 		padding: 18px;
 		display: flex;
@@ -494,7 +494,7 @@
 	}
 	.hero {
 		border-color: var(--c);
-		background: linear-gradient(180deg, color-mix(in srgb, var(--c) 22%, #14294a), #14294a 70%);
+		background: linear-gradient(180deg, color-mix(in srgb, var(--c) 22%, #2a1850), #2a1850 70%);
 	}
 	.kicker {
 		font-size: 12px;
@@ -541,7 +541,7 @@
 		flex: 1;
 		height: 12px;
 		border-radius: 999px;
-		background: #1f3a5e;
+		background: #3a2268;
 		overflow: hidden;
 	}
 	.clock-bar i {
@@ -567,11 +567,11 @@
 		border-radius: 20px;
 		overflow: hidden;
 		box-shadow: 0 14px 34px #0008;
-		border: 3px solid #ff7a45;
+		border: 3px solid #ff4fa3;
 	}
 	.card-word {
 		display: block;
-		background: #ff7a45;
+		background: #ff4fa3;
 		color: #fff;
 		text-align: center;
 		font-family: var(--display);
@@ -612,7 +612,7 @@
 	}
 	.small {
 		font-size: 13px;
-		color: #a9c0e0;
+		color: #d0b8ec;
 		margin: 0;
 	}
 	.center {
@@ -638,12 +638,12 @@
 		opacity: 0.5;
 	}
 	.btn.primary {
-		background: linear-gradient(180deg, #ff9a6c, #ff7a45);
-		color: #1a0d05;
-		box-shadow: 0 4px 14px #ff7a4540;
+		background: linear-gradient(180deg, #ff7cbf, #ff4fa3);
+		color: #2a0a1e;
+		box-shadow: 0 4px 14px #ff4fa340;
 	}
 	.btn.ghost {
-		border-color: #36537c;
+		border-color: #5a3a8a;
 		background: transparent;
 		color: inherit;
 	}
@@ -656,8 +656,8 @@
 	}
 	.btn.skip {
 		min-height: 72px;
-		background: #1f3a5e;
-		border-color: #36537c;
+		background: #3a2268;
+		border-color: #5a3a8a;
 		color: inherit;
 	}
 	.btn.buzz {
@@ -689,7 +689,7 @@
 		min-height: 44px;
 		background: none;
 		border: 0;
-		color: #a9c0e0;
+		color: #d0b8ec;
 		text-decoration: underline;
 		font: inherit;
 	}
@@ -720,8 +720,8 @@
 		padding: 6px 12px 6px 6px;
 		border-radius: 999px;
 		font-weight: 700;
-		background: #1f3a5e;
-		border: 1px solid #36537c;
+		background: #3a2268;
+		border: 1px solid #5a3a8a;
 	}
 	.played li .tag {
 		font-size: 11px;
@@ -729,7 +729,7 @@
 		text-transform: uppercase;
 		padding: 3px 8px;
 		border-radius: 999px;
-		background: #36537c;
+		background: #5a3a8a;
 	}
 	.played li.hit .tag {
 		background: #4fcf7e;
@@ -762,12 +762,12 @@
 		gap: 12px;
 		padding: 12px;
 		border-radius: 14px;
-		background: #10213a;
+		background: #1f1038;
 		border: 2px solid transparent;
 	}
 	.rank li.win {
 		border-color: var(--c);
-		background: color-mix(in srgb, var(--c) 18%, #10213a);
+		background: color-mix(in srgb, var(--c) 18%, #1f1038);
 	}
 	.pos {
 		font-family: var(--display);
@@ -783,7 +783,7 @@
 	}
 	.rank-faces {
 		font-size: 13px;
-		color: #a9c0e0;
+		color: #d0b8ec;
 	}
 	.rank b {
 		font-family: var(--display);
