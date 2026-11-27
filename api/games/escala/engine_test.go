@@ -229,8 +229,8 @@ func TestBotsFinishTheirPart(t *testing.T) {
 }
 
 func TestThemes(t *testing.T) {
-	if len(themes) < 100 {
-		t.Fatalf("want at least 100 themes, have %d", len(themes))
+	if len(themes) < 300 {
+		t.Fatalf("want at least 300 themes, have %d", len(themes))
 	}
 	seen := map[string]bool{}
 	for _, th := range themes {
