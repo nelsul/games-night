@@ -52,5 +52,5 @@ export const lapChoices = [1, 2];
 export const secondChoices = [45, 60, 90];
 
 /** Every team gets a color and a name, by position. */
-export const teamColors = ['#ff7a45', '#3ea6ff', '#5fd38d', '#ff5fa2', '#a77bff'];
-export const teamNames = ['Laranja', 'Azul', 'Verde', 'Rosa', 'Roxo'];
+export const teamColors = ['#ff4fa3', '#ffb347', '#5fd38d', '#35d4ff', '#c58bff'];
+export const teamNames = ['Rosa', 'Dourado', 'Verde', 'Ciano', 'Roxo'];

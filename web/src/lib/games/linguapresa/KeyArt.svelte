@@ -9,20 +9,20 @@
 <svg viewBox="0 0 358 290" width="100%" {height} preserveAspectRatio="xMidYMid slice" style="display: block" role="img" aria-label="Arte do Língua Presa: uma carta com uma palavra e quatro palavras proibidas riscadas">
 	<defs>
 		<linearGradient id="g{id}" x1="0" y1="0" x2="0" y2="1">
-			<stop offset="0" stop-color="#10213a" />
-			<stop offset="1" stop-color="#1d4a72" />
+			<stop offset="0" stop-color="#1f1038" />
+			<stop offset="1" stop-color="#5a2a8a" />
 		</linearGradient>
 		<linearGradient id="f{id}" x1="0" y1="0" x2="0" y2="1">
-			<stop offset="0.65" stop-color="#0b1626" stop-opacity="0" />
-			<stop offset="1" stop-color="#0b1626" stop-opacity="1" />
+			<stop offset="0.65" stop-color="#140a24" stop-opacity="0" />
+			<stop offset="1" stop-color="#140a24" stop-opacity="1" />
 		</linearGradient>
 	</defs>
 	<rect width="358" height="290" fill="url(#g{id})" />
-	<circle cx="298" cy="62" r="30" fill="none" stroke="#ff7a45" stroke-width="6" />
-	<path d="M298 62V44M298 62l12 8" stroke="#ff7a45" stroke-width="5" stroke-linecap="round" />
+	<circle cx="298" cy="62" r="30" fill="none" stroke="#ff4fa3" stroke-width="6" />
+	<path d="M298 62V44M298 62l12 8" stroke="#ff4fa3" stroke-width="5" stroke-linecap="round" />
 	<g transform="rotate(-4 179 150)">
-		<rect x="74" y="38" width="210" height="222" rx="14" fill="#fff4e0" stroke="#ff7a45" stroke-width="4" />
-		<rect x="74" y="38" width="210" height="52" rx="14" fill="#ff7a45" />
+		<rect x="74" y="38" width="210" height="222" rx="14" fill="#fff4e0" stroke="#ff4fa3" stroke-width="4" />
+		<rect x="74" y="38" width="210" height="52" rx="14" fill="#ff4fa3" />
 		<text x="179" y="76" text-anchor="middle" font-family="Bebas Neue, Impact, sans-serif" font-size="36" fill="#fff" letter-spacing="2">PIZZA</text>
 		{#each taboo as w, i (w)}
 			<g transform="translate(0 {i * 36})">

@@ -104,9 +104,9 @@
 		font-weight: 600;
 	}
 	button.on {
-		background: #ff7a45;
-		border-color: #ff7a45;
-		color: #1a0d05;
+		background: #ff4fa3;
+		border-color: #ff4fa3;
+		color: #2a0a1e;
 	}
 	button:disabled:not(.on) {
 		opacity: 0.6;
