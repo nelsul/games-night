@@ -125,6 +125,8 @@
 			sound('turn');
 			haptic('tap');
 		}
+		// The clock is running: nothing may cover the card or the buzzer.
+		if (phase === 'turn' && prevPhase !== 'turn') announcer.next();
 		if (phase === 'summary' && prevPhase === 'turn') {
 			sound(match.played.some((p) => p.outcome === 'hit') ? 'reveal' : 'lose');
 		}

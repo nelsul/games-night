@@ -254,7 +254,7 @@ func TestCardHiddenFromNarratorsTeam(t *testing.T) {
 	}
 }
 
-func TestBotsPlayATurn(t *testing.T) {
+func TestBotsPlayATurnWithoutScoring(t *testing.T) {
 	s := newMatch(t, 4, Options{})
 	bot := s.Narrator()
 	r := rng()
@@ -263,6 +263,9 @@ func TestBotsPlayATurn(t *testing.T) {
 		if a == nil {
 			t.Fatalf("bot stuck in %s", s.Phase)
 		}
+		if a.Type == "hit" {
+			t.Fatal("a bot narrator must never mark a hit: nobody is guessing")
+		}
 		if err := Apply(s, bot, *a, t0.Add(time.Second), r); err != nil {
 			t.Fatal(err)
 		}
@@ -270,7 +273,30 @@ func TestBotsPlayATurn(t *testing.T) {
 	if s.Phase != PhaseSummary {
 		t.Fatal("the bot never ended its turn")
 	}
+	for i, tm := range s.Teams {
+		if tm.Score != 0 {
+			t.Fatalf("team %d scored %d from a bot's turn", i, tm.Score)
+		}
+	}
 	if BotAction(s, bot, t0.Add(time.Second), rng()) != nil {
 		t.Fatal("bots wait for a person to move on")
+	}
+}
+
+func TestBotWaitsBeforeStarting(t *testing.T) {
+	s := newMatch(t, 4, Options{})
+	start := Action{Type: "start"}
+	if got := botPause(s, start, t0.Add(time.Second)); got != readyPause-time.Second {
+		t.Fatalf("pause after 1s = %v, want %v", got, readyPause-time.Second)
+	}
+	if got := botPause(s, start, t0.Add(readyPause+time.Second)); got != 0 {
+		t.Fatalf("pause after the wait = %v, want 0", got)
+	}
+	// A new turn restarts the wait from the moment it became ready.
+	s.Phase = PhaseSummary
+	later := t0.Add(time.Minute)
+	do(t, s, "a", Action{Type: "next"}, later)
+	if got := botPause(s, start, later); got != readyPause {
+		t.Fatalf("pause at the start of turn 2 = %v, want %v", got, readyPause)
 	}
 }
