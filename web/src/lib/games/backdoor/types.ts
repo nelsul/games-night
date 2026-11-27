@@ -1,7 +1,7 @@
 // Mirrors api/games/backdoor/view.go: what one player may see of a match.
 
 export type Role = 'dev' | 'analyst' | 'product_owner' | 'hacker' | 'social_engineer' | 'zero_day' | 'freelancer';
-export type Phase = 'badges' | 'proposal' | 'review' | 'push' | 'guess' | 'over';
+export type Phase = 'badges' | 'proposal' | 'review' | 'push' | 'reveal' | 'guess' | 'over';
 
 export interface Options {
 	product_owner: boolean;
@@ -44,6 +44,10 @@ export interface MatchView {
 	proposals: Proposal[];
 	options: Options;
 	phase_started_at: string;
+	/** Commits opened so far in the reveal phase (true = backdoor). */
+	commits: boolean[];
+	commits_total: number;
+	backdoors_needed: number;
 	social_engineer?: string;
 	me: {
 		role: Role;

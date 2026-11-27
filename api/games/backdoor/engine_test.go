@@ -101,6 +101,16 @@ func runSprint(t *testing.T, s *State, squad []string, dirty map[string]bool) {
 		b := dirty[p]
 		must(t, s, p, Action{Type: "push", Backdoor: &b})
 	}
+	openAll(t, s)
+}
+
+// openAll has the Scrum Master open every commit and close the sprint.
+func openAll(t *testing.T, s *State) {
+	t.Helper()
+	for range s.Commits {
+		must(t, s, s.leaderID(), Action{Type: "open"})
+	}
+	must(t, s, s.leaderID(), Action{Type: "continue"})
 }
 
 func TestRolesPerTableSize(t *testing.T) {
@@ -279,6 +289,7 @@ func TestPushRules(t *testing.T) {
 	must(t, s, dev, Action{Type: "push", Backdoor: no()})
 	mustFail(t, s, dev, Action{Type: "push", Backdoor: no()}) // twice
 	must(t, s, hacker, Action{Type: "push", Backdoor: yes()})
+	openAll(t, s)
 	r := s.Results[0]
 	if !r.Rollback || r.Backdoors != 1 || s.Sprint != 1 || s.Phase != PhaseProposal {
 		t.Fatalf("result %+v sprint %d phase %s", r, s.Sprint, s.Phase)
@@ -436,5 +447,45 @@ func TestViewAfterTheEndRevealsEverything(t *testing.T) {
 	v := ViewFor(s, d[0])
 	if v.Phase != PhaseOver || len(v.Roles) != 5 || v.SocialEngineer == "" || len(v.Proposals) != 3 {
 		t.Fatalf("end view: %+v", v)
+	}
+}
+
+func TestScrumMasterOpensCommitsOneByOne(t *testing.T) {
+	s := setup(t, 5, Options{}, 12)
+	allReady(t, s)
+	h := hackers(s)[0]
+	d := devsOnly(s)[0]
+	leader := s.leaderID()
+	must(t, s, leader, Action{Type: "select", Squad: []string{h, d}})
+	must(t, s, leader, Action{Type: "propose"})
+	for _, p := range s.Players {
+		must(t, s, p, Action{Type: "vote", Approve: yes()})
+	}
+	must(t, s, h, Action{Type: "push", Backdoor: yes()})
+	must(t, s, d, Action{Type: "push", Backdoor: no()})
+	if s.Phase != PhaseReveal || len(s.Results) != 0 {
+		t.Fatalf("phase %s, %d results after the pushes", s.Phase, len(s.Results))
+	}
+	other := s.Players[(s.Leader+1)%5]
+	mustFail(t, s, other, Action{Type: "open"})      // only the Scrum Master
+	mustFail(t, s, leader, Action{Type: "continue"}) // nothing open yet
+	if v := ViewFor(s, other); len(v.Commits) != 0 || v.CommitsTotal != 2 {
+		t.Fatalf("before opening: %+v / %d", v.Commits, v.CommitsTotal)
+	}
+	must(t, s, leader, Action{Type: "open"})
+	if v := ViewFor(s, other); len(v.Commits) != 1 {
+		t.Fatalf("one open: %+v", v.Commits)
+	}
+	must(t, s, leader, Action{Type: "open"})
+	mustFail(t, s, leader, Action{Type: "open"}) // none left
+	if v := ViewFor(s, other); len(v.Commits) != 2 || v.Commits[0] == v.Commits[1] {
+		t.Fatalf("both open: %+v", v.Commits)
+	}
+	must(t, s, leader, Action{Type: "continue"})
+	if r := s.Results[0]; !r.Rollback || r.Backdoors != 1 || s.Phase != PhaseProposal || s.Sprint != 1 {
+		t.Fatalf("result %+v phase %s sprint %d", r, s.Phase, s.Sprint)
+	}
+	if v := ViewFor(s, other); len(v.Commits) != 0 {
+		t.Fatal("commits still shown in the next sprint")
 	}
 }

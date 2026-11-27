@@ -3,6 +3,7 @@ package backdoor
 import (
 	"math/rand/v2"
 	"slices"
+	"time"
 )
 
 // Bot strategy. A bot only uses what its own badge and the public table show (the
@@ -38,6 +39,14 @@ func BotAction(s *State, bot string, rng *rand.Rand) *Action {
 			b := role.IsHacker() && botBackdoor(s, bot, rng)
 			return &Action{Type: "push", Backdoor: &b}
 		}
+	case PhaseReveal:
+		if s.leaderID() != bot {
+			return nil
+		}
+		if s.Opened < len(s.Commits) {
+			return &Action{Type: "open"}
+		}
+		return &Action{Type: "continue"}
 	case PhaseGuess:
 		if role == SocialEngineer {
 			return &Action{Type: "guess", Target: botGuess(s, bot, rng)}
@@ -236,4 +245,19 @@ func botGuess(s *State, bot string, rng *rand.Rand) string {
 		}
 	}
 	return best
+}
+
+// botPause is how much longer a bot Scrum Master waits before its next step of the
+// reveal, so people see each commit, and the verdict, before the match moves on.
+func botPause(s *State, a Action, now time.Time) time.Duration {
+	var gap time.Duration
+	switch {
+	case s.Phase == PhaseReveal && a.Type == "open":
+		gap = 2200 * time.Millisecond
+	case s.Phase == PhaseReveal && a.Type == "continue":
+		gap = 4 * time.Second
+	default:
+		return 0
+	}
+	return max(0, gap-now.Sub(s.PhaseStartedAt))
 }
