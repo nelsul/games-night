@@ -114,6 +114,14 @@ func (*Game) BotStep(ctx context.Context, tx pgx.Tx, roomID string, bots []strin
 		if a == nil {
 			continue
 		}
+		if wait := botPause(&m.state, *a, now); wait > 0 {
+			select {
+			case <-time.After(wait):
+				now = now.Add(wait)
+			case <-ctx.Done():
+				return false, ctx.Err()
+			}
+		}
 		if err := Apply(&m.state, bot, *a, now, rng); err != nil {
 			return false, fmt.Errorf("bot %s %s: %w", bot, a.Type, err)
 		}

@@ -115,7 +115,8 @@ type State struct {
 	CardSeq int       `json:"card_seq"` // counts cards drawn, so a late tap can't hit the next card
 	Skips   int       `json:"skips"`
 	EndsAt  time.Time `json:"ends_at"`
-	Played  []Played  `json:"played"` // the current (or last) turn
+	Played  []Played  `json:"played"`   // the current (or last) turn
+	ReadyAt time.Time `json:"ready_at"` // when the current turn became ready, so bots can wait
 }
 
 // Action is what a player sends.
@@ -125,7 +126,7 @@ type Action struct {
 }
 
 // Setup splits people into teams and gets the first turn ready.
-func Setup(players []string, o Options, rng *rand.Rand, _ time.Time) (*State, error) {
+func Setup(players []string, o Options, rng *rand.Rand, now time.Time) (*State, error) {
 	if len(players) < MinPlayers || len(players) > MaxPlayers {
 		return nil, ruleErr("Língua Presa é para 4 a 10 pessoas.")
 	}
@@ -165,6 +166,7 @@ func Setup(players []string, o Options, rng *rand.Rand, _ time.Time) (*State, er
 		Turns:   o.laps() * biggest * teamCount,
 		Phase:   PhaseReady,
 		Card:    -1,
+		ReadyAt: now,
 	}
 	s.reshuffle(rng)
 	return s, nil
@@ -313,6 +315,7 @@ func Apply(s *State, user string, a Action, now time.Time, rng *rand.Rand) error
 			s.Phase = PhaseOver
 		} else {
 			s.Phase = PhaseReady
+			s.ReadyAt = now
 		}
 		return nil
 	}
