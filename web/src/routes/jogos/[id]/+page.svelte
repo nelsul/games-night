@@ -7,7 +7,11 @@
 	const mod = $derived(games[page.params.id ?? '']);
 	const game = $derived(mod?.info);
 
-	let tab = $state<'roles' | 'how'>('roles');
+	import ScreenshotViewer from '$lib/components/ScreenshotViewer.svelte';
+
+	let tab = $state<'roles' | 'how' | 'shots'>('roles');
+	const shots = $derived(mod?.screenshots ?? []);
+	let viewing = $state<number | null>(null);
 	let error = $state('');
 	let creating = $state(false);
 
@@ -54,6 +58,9 @@
 			<div class="tabs" role="tablist">
 				<button role="tab" aria-selected={tab === 'roles'} onclick={() => (tab = 'roles')}>Personagens</button>
 				<button role="tab" aria-selected={tab === 'how'} onclick={() => (tab = 'how')}>Como jogar</button>
+				{#if shots.length}
+					<button role="tab" aria-selected={tab === 'shots'} onclick={() => (tab = 'shots')}>Imagens</button>
+				{/if}
 			</div>
 
 			{#if tab === 'roles'}
@@ -70,6 +77,15 @@
 						</li>
 					{/each}
 				</ul></div>
+			{:else if tab === 'shots'}
+				<div role="tabpanel" class="shots">
+					{#each shots as shot, i (shot.src)}
+						<button class="shot" onclick={() => (viewing = i)} aria-label="Ampliar: {shot.caption}">
+							<img src={shot.src} alt={shot.caption} loading="lazy" decoding="async" width="150" height="325" />
+							<span>{shot.caption}</span>
+						</button>
+					{/each}
+				</div>
 			{:else}
 				<div role="tabpanel"><ol class="how">
 					{#each game.howTo as step, i (i)}
@@ -79,6 +95,9 @@
 			{/if}
 		</div>
 	</main>
+	{#if viewing !== null}
+		<ScreenshotViewer {shots} bind:index={viewing} onclose={() => (viewing = null)} />
+	{/if}
 {/if}
 
 <style>
@@ -209,6 +228,45 @@
 	}
 	.team.bad {
 		color: #ff7b72;
+	}
+	.shots {
+		display: flex;
+		gap: 12px;
+		overflow-x: auto;
+		margin: 0 -16px;
+		padding: 0 16px 6px;
+		scroll-snap-type: x mandatory;
+		scrollbar-width: none;
+	}
+	.shots::-webkit-scrollbar {
+		display: none;
+	}
+	.shot {
+		flex-shrink: 0;
+		width: 150px;
+		border: none;
+		background: none;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		text-align: left;
+		cursor: zoom-in;
+		scroll-snap-align: start;
+	}
+	.shot img {
+		width: 150px;
+		height: auto;
+		aspect-ratio: 525 / 1137;
+		object-fit: cover;
+		border-radius: 12px;
+		border: 1px solid var(--line);
+		background: var(--surface);
+	}
+	.shot span {
+		font-size: 13px;
+		color: var(--muted);
+		line-height: 1.3;
 	}
 	.how li {
 		display: flex;
