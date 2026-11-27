@@ -2,7 +2,7 @@
 	// A Backdoor match. The look borrows from phone settings screens (big titles, actions
 	// at the bottom) and code review tools (PRs, diffs, pipelines). Everything shown comes
 	// from the server's view for this player; this file never decides a rule.
-	import { onDestroy, untrack } from 'svelte';
+	import { onDestroy } from 'svelte';
 	import { fly, scale } from 'svelte/transition';
 	import Title from './Title.svelte';
 	import { feel, haptic, ms, saveFeel, sound } from '$lib/feel.svelte';
@@ -10,7 +10,8 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Badge from './Badge.svelte';
-	import Announce, { type Announcement } from './Announce.svelte';
+	import { Announcer, type Announcement } from '$lib/announcer.svelte';
+	import Announcements from '$lib/components/Announcements.svelte';
 	import Commits from './Commits.svelte';
 	import { roleInfo, type MatchView } from './types';
 
@@ -40,7 +41,8 @@
 
 	// What just happened at the table: sounds, haptics and the announcements between
 	// phases ("Vez de Ana montar o squad"), so a new turn never just swaps the screen.
-	let announcements = $state<Announcement[]>([]);
+	const announcer = new Announcer(() => match.phase);
+	const tones = { turn: '#d29922', good: '#3fb950', bad: '#f85149' };
 	let prev: { phase: string; proposals: number } | null = null;
 	$effect(() => {
 		const cur = { phase: match.phase, proposals: match.proposals.length };
@@ -60,7 +62,7 @@
 					kicker: `${yes} de ${match.players.length} approves`,
 					title: 'PR recusado',
 					text: `Reunião ${match.failed_meetings} de ${match.max_failed} sem decisão.`,
-					tone: 'bad'
+					tone: tones.bad
 				});
 			}
 		}
@@ -81,27 +83,9 @@
 			const a = announcementFor(cur.phase, sprintLabel, mine);
 			if (a) queue.push(a);
 		}
-		if (queue.length) announcements = [...announcements, ...queue];
+		if (queue.length) announcer.push(...queue);
 		prev = cur;
 	});
-
-	// The first queued announcement that still fits the match; older ones are skipped.
-	// The one on screen stays its full time even if the match moves on meanwhile; the
-	// next one is the first queued announcement that still fits the match (older ones
-	// are skipped, so the table never watches a backlog).
-	let announcing = $state<Announcement | null>(null);
-	function takeNext(): Announcement | null {
-		const next = announcements.find((a) => a.phase === match.phase);
-		announcements = next ? announcements.slice(announcements.indexOf(next) + 1) : [];
-		return next ?? null;
-	}
-	$effect(() => {
-		if (!announcing && announcements.length) announcing = untrack(takeNext);
-	});
-	// Straight to the next one, so the backdrop stays up between announcements.
-	function closeAnnouncement() {
-		announcing = takeNext();
-	}
 
 	function announcementFor(phase: string, sprintLabel: string, mine: boolean): Announcement | null {
 		const squad = match.selection;
@@ -113,7 +97,7 @@
 					title: mine ? 'Sua vez' : `Vez de ${leaderName}`,
 					text: mine ? `Monte um squad de ${match.squad_size} pessoas.` : `Montando um squad de ${match.squad_size} pessoas.`,
 					faces: [match.leader],
-					tone: 'turn',
+					tone: tones.turn,
 					hold: mine ? 5500 : 5000
 				};
 			case 'review':
@@ -131,7 +115,7 @@
 					title: mine ? 'Faça seu push' : 'Hora do push',
 					text: mine ? 'Ninguém vai ver o seu commit.' : 'O squad está commitando em segredo.',
 					faces: squad,
-					tone: 'good'
+					tone: tones.good
 				};
 			case 'reveal':
 				return {
@@ -150,7 +134,7 @@
 						? 'Você é a Engenharia Social: ache o Analista e os hackers vencem.'
 						: `${name(match.social_engineer ?? '')}, a Engenharia Social, vai tentar achar o Analista.`,
 					faces: match.social_engineer ? [match.social_engineer] : [],
-					tone: 'bad',
+					tone: tones.bad,
 					hold: 6000
 				};
 			case 'over':
@@ -158,7 +142,7 @@
 					phase,
 					kicker: 'Fim de jogo',
 					title: match.winner === 'devs' ? 'Os devs venceram' : 'Os hackers venceram',
-					tone: match.winner === 'devs' ? 'good' : 'bad',
+					tone: match.winner === 'devs' ? tones.good : tones.bad,
 					hold: 6000
 				};
 		}
@@ -553,9 +537,7 @@
 	</main>
 </div>
 
-{#if announcing}
-	<Announce item={announcing} {people} onclose={closeAnnouncement} />
-{/if}
+<Announcements {announcer} {people} />
 
 {#if showBadge}
 	<div class="sheet" role="dialog" aria-modal="true" aria-label="Seu crachá">

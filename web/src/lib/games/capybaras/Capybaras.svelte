@@ -8,6 +8,8 @@
 	import { feel, haptic, ms, saveFeel, sound } from '$lib/feel.svelte';
 	import { api, ApiError, type Room, type RoomPlayer } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import Announcements from '$lib/components/Announcements.svelte';
+	import { Announcer } from '$lib/announcer.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Title from './Title.svelte';
 	import CardFace from './CardFace.svelte';
@@ -246,16 +248,10 @@
 
 	const recent = $derived(match.events.slice(-4).reverse());
 
-	// Big moments get a full-screen card: a jaguar eating someone, a dive, your turn.
-	type Moment = { key: number; kind: 'eaten' | 'dive' | 'turn' | 'drew' | 'win'; text: string; sub?: string; card?: string };
-	let moment = $state<Moment | null>(null);
-	let momentTimer: ReturnType<typeof setTimeout> | undefined;
-	function show(m: Moment, hold = 1800) {
-		moment = m;
-		clearTimeout(momentTimer);
-		momentTimer = setTimeout(() => (moment = null), ms(hold) || 1200);
-	}
-	onDestroy(() => clearTimeout(momentTimer));
+	// Big moments get a full-screen announcement (shared with every game): a jaguar
+	// eating someone, a dive, the card you drew, your turn.
+	const announcer = new Announcer();
+	const tones = { jaguar: '#e8902a', dive: '#2a9fd6', turn: '#ff9f1c', card: '#f6e7c8' };
 
 	let lastSeq = -1;
 	let lastTurnKey = '';
@@ -272,12 +268,25 @@
 				case 'eaten':
 					sound('lose');
 					haptic('warning');
-					show({ key: e.seq, kind: 'eaten', text: e.player === me ? 'A onça te pegou!' : `A onça pegou ${name(e.player)}!`, sub: e.player === me ? 'Agora é torcer pelos outros.' : undefined }, 2400);
+					announcer.push({
+						kicker: 'Onça!',
+						title: e.player === me ? 'A onça te pegou!' : `A onça pegou ${name(e.player)}!`,
+						text: e.player === me ? 'Agora é torcer pelos outros.' : 'Uma capivara a menos na lagoa.',
+						art: 'jaguar',
+						tone: tones.jaguar,
+						hold: 6000
+					});
 					break;
 				case 'dive':
 					sound('push');
 					haptic('success');
-					show({ key: e.seq, kind: 'dive', text: e.player === me ? 'Onça! Você mergulhou a tempo.' : `${Name(e.player)} mergulhou!`, sub: e.player === me ? 'Agora esconda a onça no monte.' : 'Escapou de uma onça.' }, 2000);
+					announcer.push({
+						kicker: 'Mergulho',
+						title: e.player === me ? 'Você mergulhou a tempo!' : `${Name(e.player)} mergulhou!`,
+						text: e.player === me ? 'Agora esconda a onça no monte.' : 'Escapou de uma onça, e agora esconde ela no monte.',
+						art: 'dive',
+						tone: tones.dive
+					});
 					break;
 				case 'nope':
 					sound('vote');
@@ -289,7 +298,7 @@
 					sound('select');
 					break;
 				case 'draw':
-					if (e.player === me && e.card) show({ key: e.seq, kind: 'drew', text: 'Você comprou', card: e.card.kind }, 1300);
+					if (e.player === me && e.card) announcer.push({ kicker: 'Você comprou', title: cardName(e.card.kind), art: `card:${e.card.kind}`, tone: tones.card });
 					else sound('tap');
 					break;
 				case 'win':
@@ -303,10 +312,16 @@
 		}
 		lastSeq = top;
 		const key = `${match.turn}:${match.turns_left}`;
-		if (key !== lastTurnKey && match.turn === me && match.phase === 'play' && !match.me.out && !moment) {
+		if (key !== lastTurnKey && match.turn === me && match.phase === 'play' && !match.me.out) {
 			sound('turn');
 			haptic('select');
-			show({ key: top + 0.5, kind: 'turn', text: 'Sua vez', sub: match.turns_left > 1 ? `Você joga ${match.turns_left} vezes.` : 'Jogue o que quiser e compre uma carta.' }, 1400);
+			announcer.push({
+				kicker: `${match.deck} cartas no monte · ${match.jaguars} ${match.jaguars === 1 ? 'onça' : 'onças'}`,
+				title: 'Sua vez',
+				text: match.turns_left > 1 ? `A correnteza te trouxe: você joga ${match.turns_left} vezes.` : 'Jogue o que quiser e compre uma carta.',
+				faces: [me],
+				tone: tones.turn
+			});
 		}
 		lastTurnKey = key;
 	});
@@ -536,22 +551,17 @@
 	</div>
 {/if}
 
-{#if moment}
-	<!-- The backdrop stays while moments follow each other; only the content swaps. -->
-	<button class="moment {moment.kind}" onclick={() => (moment = null)} in:fade={{ duration: ms(120) }} out:fade={{ duration: ms(200) }} aria-live="assertive">
-		{#key moment.key}
-			{#if moment.kind === 'eaten'}
-				<span class="big-art" in:scale={{ start: 2.4, duration: ms(420), easing: backOut }}><CardArt kind="jaguar" size={150} /></span>
-			{:else if moment.kind === 'dive'}
-				<span class="big-art" in:fly={{ y: 60, duration: ms(420) }}><CardArt kind="dive" size={140} /></span>
-			{:else if moment.kind === 'drew' && moment.card}
-				<span in:fly={{ x: -120, y: -60, duration: ms(380), easing: backOut }}><CardFace kind={moment.card} width={150} text /></span>
-			{/if}
-			<strong in:scale={{ start: 0.7, duration: ms(320), delay: ms(120), easing: backOut }}>{moment.text}</strong>
-			{#if moment.sub}<span class="sub">{moment.sub}</span>{/if}
-		{/key}
-	</button>
-{/if}
+<Announcements {announcer} {people}>
+	{#snippet art(a)}
+		{#if a.art === 'jaguar'}
+			<span class="big-art"><CardArt kind="jaguar" size={150} /></span>
+		{:else if a.art === 'dive'}
+			<span class="big-art"><CardArt kind="dive" size={140} /></span>
+		{:else if a.art?.startsWith('card:')}
+			<CardFace kind={a.art.slice(5)} width={150} text />
+		{/if}
+	{/snippet}
+</Announcements>
 
 {#if confirmStop}
 	<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="stop-title">
@@ -565,10 +575,9 @@
 {/if}
 
 <style>
-	/* The game's colors, also for the sheets and big moments, which sit outside .cc. */
+	/* The game's colors, also for the sheets, which sit outside .cc. */
 	.cc,
-	.sheet,
-	.moment {
+	.sheet {
 		--sand: #f6e7c8;
 		--lagoon: #0f2a1f;
 		--leaf: #1d6b4f;
@@ -1113,45 +1122,6 @@
 	.pos {
 		font-weight: 800;
 		font-size: 13px;
-	}
-	.moment {
-		position: fixed;
-		inset: 0;
-		z-index: 70;
-		border: none;
-		margin: 0;
-		padding: 24px;
-		background: rgba(8, 26, 19, 0.9);
-		backdrop-filter: blur(4px);
-		-webkit-backdrop-filter: blur(4px);
-		color: var(--sand);
-		font: inherit;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 14px;
-		text-align: center;
-		cursor: pointer;
-	}
-	.moment.eaten {
-		background: rgba(60, 16, 6, 0.92);
-	}
-	.moment.dive {
-		background: rgba(8, 48, 70, 0.92);
-	}
-	.moment.drew strong {
-		order: -1;
-		font-size: 22px !important;
-	}
-	.moment strong {
-		font-size: clamp(30px, 9vw, 44px);
-		line-height: 1.1;
-		font-weight: 900;
-	}
-	.moment .sub {
-		color: var(--muted-c);
-		font-size: 16px;
 	}
 	.big-art {
 		display: flex;

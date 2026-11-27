@@ -15,6 +15,8 @@
 	import { api, ApiError, type Room } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import Announcements from '$lib/components/Announcements.svelte';
+	import { Announcer } from '$lib/announcer.svelte';
 	import type { MatchView } from './types';
 
 	let {
@@ -51,8 +53,6 @@
 	let clue = $state('');
 	let editing = $state(false);
 	let confirmStop = $state(false);
-	let toast = $state('');
-	let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 	const myPlayer = $derived(player(me));
 	const myPos = $derived(match.line.findIndex((c) => c.player === me));
@@ -137,13 +137,11 @@
 		editing = true;
 	}
 
-	function flash(text: string) {
-		toast = text;
-		clearTimeout(toastTimer);
-		toastTimer = setTimeout(() => (toast = ''), 3200);
-	}
 
 	// ---- What just happened: sounds, announcements and the card-by-card reveal ----
+
+	// Full-screen announcements between moments (shared with every game).
+	const announcer = new Announcer(() => match.phase);
 
 	let prevPhase: string | null = null;
 	let prevRound = -1;
@@ -156,8 +154,22 @@
 			if (phase === 'clues' && round !== prevRound) {
 				sound('turn');
 				haptic('tap');
+				announcer.push({
+					phase: 'clues',
+					kicker: `Rodada ${round + 1} de ${match.rounds}`,
+					title: match.theme.title,
+					text: `1 é ${match.theme.low}, 100 é ${match.theme.high}. Escreva a sua dica.`,
+					tone: '#ffb347'
+				});
 			} else if (phase === 'order' && prevPhase === 'clues') {
 				sound('vote');
+				announcer.push({
+					phase: 'order',
+					kicker: 'Todo mundo deu a dica',
+					title: 'Hora de montar a fila',
+					text: 'Conversem e coloquem as cartas do menor para o maior.',
+					tone: '#6ee08f'
+				});
 			}
 		}
 		prevPhase = phase;
@@ -166,7 +178,11 @@
 	$effect(() => {
 		const seq = match.swap_seq;
 		if (prevSwapSeq >= 0 && seq !== prevSwapSeq) {
-			flash(match.swap_ok ? 'Tema trocado! Escrevam novas dicas.' : 'A troca de tema foi recusada.');
+			announcer.push(
+				match.swap_ok
+					? { kicker: 'A mesa votou', title: 'Tema trocado!', text: `Agora é "${match.theme.title}". Escrevam novas dicas.`, tone: '#ffb347' }
+					: { kicker: 'A mesa votou', title: 'Troca recusada', text: 'O tema continua o mesmo.', tone: '#ff8a8a' }
+			);
 			sound(match.swap_ok ? 'turn' : 'rollback');
 			haptic(match.swap_ok ? 'success' : 'warning');
 		}
@@ -232,7 +248,6 @@
 	});
 	onDestroy(() => {
 		clearInterval(timer);
-		clearTimeout(toastTimer);
 	});
 
 	const stars = $derived(match.score === match.rounds ? 3 : match.score * 2 >= match.rounds ? 2 : match.score > 0 ? 1 : 0);
@@ -270,9 +285,6 @@
 		</div>
 	{/if}
 
-	{#if toast}
-		<div class="toast" role="status" transition:fly={{ y: -20, duration: motion(260) }}>{toast}</div>
-	{/if}
 
 	<header class="bar">
 		<a href="/" aria-label="Voltar ao início"><Icon name="back" /></a>
@@ -592,6 +604,8 @@
 	{/if}
 </div>
 
+<Announcements {announcer} {people} />
+
 <style>
 	.es {
 		--gold: #ffb347;
@@ -662,21 +676,6 @@
 		font-size: 11px;
 		font-weight: 700;
 		padding: 1px 5px;
-	}
-	.toast {
-		position: fixed;
-		top: calc(12px + var(--safe-top));
-		left: 50%;
-		translate: -50% 0;
-		z-index: 30;
-		max-width: min(92vw, 420px);
-		background: var(--gold);
-		color: var(--ink);
-		font-weight: 700;
-		border-radius: 999px;
-		padding: 10px 18px;
-		box-shadow: 0 8px 24px #0008;
-		text-align: center;
 	}
 
 	/* ---- steps ---- */
