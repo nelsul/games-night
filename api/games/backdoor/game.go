@@ -113,6 +113,16 @@ func (g *Game) BotStep(ctx context.Context, tx pgx.Tx, roomID string, bots []str
 		if a == nil {
 			continue
 		}
+		// Opening commits is a show: give the table time to look at each one. Nobody
+		// else can act during the reveal, so holding the match for a moment is fine.
+		if wait := botPause(&m.state, *a, now); wait > 0 {
+			select {
+			case <-time.After(wait):
+				now = now.Add(wait)
+			case <-ctx.Done():
+				return false, ctx.Err()
+			}
+		}
 		if err := Apply(&m.state, bot, *a, now); err != nil {
 			return false, fmt.Errorf("bot %s %s: %w", bot, a.Type, err)
 		}

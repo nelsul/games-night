@@ -25,7 +25,7 @@ export const info: GameInfo = {
 	howTo: [
 		'Cada pessoa recebe um crachá secreto: dev ou hacker. Os hackers sabem quem são os outros hackers.',
 		'A cada sprint, o Scrum Master da vez monta um squad e todo mundo aprova ou pede mudanças. Cinco reuniões seguidas sem decisão e os hackers vencem.',
-		'Quem está no squad faz um push em segredo. Basta uma backdoor para a sprint levar rollback.',
+		'Quem está no squad faz um push em segredo. Depois o Scrum Master abre os commits um por um, embaralhados, na frente de todos. Basta uma backdoor para a sprint levar rollback.',
 		'Três sprints com rollback e os hackers vencem. Três deploys e os devs quase vencem: a Engenharia Social ainda tem um palpite para achar o Analista.'
 	],
 	roles: [

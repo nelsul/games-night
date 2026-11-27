@@ -3,6 +3,7 @@ package backdoor
 import (
 	"math/rand/v2"
 	"testing"
+	"time"
 )
 
 // Whole tables of bots must always finish a match without breaking a rule.
@@ -85,4 +86,17 @@ func slices_index(list []string, v string) int {
 		}
 	}
 	return -1
+}
+
+func TestBotScrumMasterTakesItsTimeOpeningCommits(t *testing.T) {
+	s := &State{Phase: PhaseReveal, PhaseStartedAt: t0}
+	if got := botPause(s, Action{Type: "open"}, t0.Add(time.Second)); got != 1200*time.Millisecond {
+		t.Fatalf("open after 1s waits %v", got)
+	}
+	if got := botPause(s, Action{Type: "continue"}, t0.Add(5*time.Second)); got != 0 {
+		t.Fatalf("continue after 5s waits %v", got)
+	}
+	if got := botPause(&State{Phase: PhaseReview, PhaseStartedAt: t0}, Action{Type: "vote"}, t0); got != 0 {
+		t.Fatalf("votes wait %v", got)
+	}
 }

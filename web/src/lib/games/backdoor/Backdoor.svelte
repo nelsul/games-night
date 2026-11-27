@@ -10,6 +10,8 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Badge from './Badge.svelte';
+	import Announce, { type Announcement } from './Announce.svelte';
+	import Commits from './Commits.svelte';
 	import { roleInfo, type MatchView } from './types';
 
 	let {
@@ -36,37 +38,120 @@
 
 	const onlineCount = $derived(room.players.filter((p) => p.online).length);
 
-	// Sounds and haptics for what happens at the table (not only for taps).
-	let prev: { phase: string; results: number; proposals: number } | null = null;
+	// What just happened at the table: sounds, haptics and the announcements between
+	// phases ("Vez de Ana montar o squad"), so a new turn never just swaps the screen.
+	let announcements = $state<Announcement[]>([]);
+	let prev: { phase: string; proposals: number } | null = null;
 	$effect(() => {
-		const cur = { phase: match.phase, results: match.results.length, proposals: match.proposals.length };
+		const cur = { phase: match.phase, proposals: match.proposals.length };
 		if (!prev) {
 			prev = cur; // first render: nothing happened yet
 			return;
 		}
-		if (cur.results > prev.results) {
-			const r = match.results.at(-1);
-			sound(r?.rollback ? 'rollback' : 'deploy');
-			haptic(r?.rollback ? 'warning' : 'success');
-		} else if (cur.proposals > prev.proposals) {
+		const queue: Announcement[] = [];
+		const pr = match.proposals.at(-1);
+		const sprintLabel = `Sprint ${Math.min(match.sprint + 1, 5)}`;
+		if (cur.proposals > prev.proposals && pr) {
 			sound('vote');
+			const yes = Object.values(pr.votes).filter(Boolean).length;
+			if (!pr.approved && match.phase !== 'over') {
+				queue.push({
+					phase: 'proposal',
+					kicker: `${yes} de ${match.players.length} approves`,
+					title: 'PR recusado',
+					text: `Reunião ${match.failed_meetings} de ${match.max_failed} sem decisão.`,
+					tone: 'bad'
+				});
+			}
 		}
 		if (cur.phase !== prev.phase) {
+			const mine =
+				(cur.phase === 'proposal' && match.me.is_leader) ||
+				(cur.phase === 'push' && match.me.in_squad) ||
+				(cur.phase === 'reveal' && match.me.is_leader) ||
+				(cur.phase === 'guess' && match.me.role === 'social_engineer');
 			if (cur.phase === 'over') {
 				const won = match.winner === match.me.team;
 				sound(won ? 'win' : 'lose');
 				haptic(won ? 'success' : 'warning');
-			} else if (
-				(cur.phase === 'proposal' && match.me.is_leader) ||
-				(cur.phase === 'push' && match.me.in_squad) ||
-				(cur.phase === 'guess' && match.me.role === 'social_engineer')
-			) {
+			} else if (mine) {
 				sound('turn');
 				haptic('select');
 			}
+			const a = announcementFor(cur.phase, sprintLabel, mine);
+			if (a) queue.push(a);
 		}
+		if (queue.length) announcements = [...announcements, ...queue];
 		prev = cur;
 	});
+
+	// The first queued announcement that still fits the match; older ones are skipped.
+	const announcing = $derived(announcements.find((a) => a.phase === match.phase));
+	function closeAnnouncement() {
+		announcements = announcing ? announcements.slice(announcements.indexOf(announcing) + 1) : [];
+	}
+
+	function announcementFor(phase: string, sprintLabel: string, mine: boolean): Announcement | null {
+		const squad = match.selection;
+		switch (phase) {
+			case 'proposal':
+				return {
+					phase,
+					kicker: sprintLabel,
+					title: mine ? 'Sua vez' : `Vez de ${leaderName}`,
+					text: mine ? `Monte um squad de ${match.squad_size} pessoas.` : `Montando um squad de ${match.squad_size} pessoas.`,
+					faces: [match.leader],
+					tone: 'turn',
+					hold: mine ? 2300 : 1900
+				};
+			case 'review':
+				return {
+					phase,
+					kicker: match.me.is_leader ? 'Seu PR' : `PR de ${leaderName}`,
+					title: 'Hora do review',
+					text: 'Todo mundo vota: approve ou request changes.',
+					faces: squad
+				};
+			case 'push':
+				return {
+					phase,
+					kicker: 'PR aprovado',
+					title: mine ? 'Faça seu push' : 'Hora do push',
+					text: mine ? 'Ninguém vai ver o seu commit.' : 'O squad está commitando em segredo.',
+					faces: squad,
+					tone: 'good'
+				};
+			case 'reveal':
+				return {
+					phase,
+					kicker: 'Todos fizeram push',
+					title: 'Conferindo os commits',
+					text: mine ? 'Você abre um por um.' : `${leaderName} abre um por um.`,
+					faces: [match.leader]
+				};
+			case 'guess':
+				return {
+					phase,
+					kicker: '3 deploys',
+					title: 'Última chance',
+					text: mine
+						? 'Você é a Engenharia Social: ache o Analista e os hackers vencem.'
+						: `${name(match.social_engineer ?? '')}, a Engenharia Social, vai tentar achar o Analista.`,
+					faces: match.social_engineer ? [match.social_engineer] : [],
+					tone: 'bad',
+					hold: 2400
+				};
+			case 'over':
+				return {
+					phase,
+					kicker: 'Fim de jogo',
+					title: match.winner === 'devs' ? 'Os devs venceram' : 'Os hackers venceram',
+					tone: match.winner === 'devs' ? 'good' : 'bad',
+					hold: 2400
+				};
+		}
+		return null;
+	}
 
 	function toggleSound() {
 		feel.sound = !feel.sound;
@@ -375,6 +460,8 @@
 					{match.selection.length - pushedCount === 1 ? 'push' : 'pushes'}…
 				</p>
 			{/if}
+		{:else if match.phase === 'reveal'}
+			<Commits {match} {leaderName} {busy} onopen={() => act({ type: 'open' })} oncontinue={() => act({ type: 'continue' })} />
 		{:else if match.phase === 'guess'}
 			<h1>Última chance</h1>
 			<p class="muted">
@@ -453,6 +540,10 @@
 		{/if}
 	</main>
 </div>
+
+{#if announcing}
+	<Announce item={announcing} {people} hurry={announcements.at(-1) !== announcing} onclose={closeAnnouncement} />
+{/if}
 
 {#if showBadge}
 	<div class="sheet" role="dialog" aria-modal="true" aria-label="Seu crachá">

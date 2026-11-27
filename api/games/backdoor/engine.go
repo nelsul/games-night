@@ -40,6 +40,7 @@ const (
 	PhaseProposal Phase = "proposal" // the Scrum Master builds the squad
 	PhaseReview   Phase = "review"   // everyone votes on the squad
 	PhasePush     Phase = "push"     // the squad pushes in secret
+	PhaseReveal   Phase = "reveal"   // the Scrum Master opens the commits one by one
 	PhaseGuess    Phase = "guess"    // the Social Engineer hunts the Analyst
 	PhaseOver     Phase = "over"
 )
@@ -140,7 +141,9 @@ type State struct {
 	Ready          map[string]bool `json:"ready"`
 	Selection      []string        `json:"selection"`
 	Votes          map[string]bool `json:"votes"`
-	Pushes         map[string]bool `json:"pushes"` // true = backdoor
+	Pushes         map[string]bool `json:"pushes"`  // true = backdoor
+	Commits        []bool          `json:"commits"` // the sprint's pushes, shuffled, while they are opened
+	Opened         int             `json:"opened"`  // how many of Commits are open
 	Proposals      []Proposal      `json:"proposals"`
 	Results        []SprintResult  `json:"results"`
 	Guess          string          `json:"guess,omitempty"`
@@ -233,7 +236,7 @@ func (s *State) finish(winner, reason string, now time.Time) {
 
 // Action is one thing a player does. Only the fields its Type needs are set.
 type Action struct {
-	Type     string   `json:"type"` // ready, select, propose, vote, push, guess
+	Type     string   `json:"type"` // ready, select, propose, vote, push, open, continue, guess
 	Squad    []string `json:"squad,omitempty"`
 	Approve  *bool    `json:"approve,omitempty"`
 	Backdoor *bool    `json:"backdoor,omitempty"`
@@ -256,6 +259,10 @@ func Apply(s *State, player string, a Action, now time.Time) error {
 		return s.vote(player, a.Approve, now)
 	case "push":
 		return s.push(player, a.Backdoor, now)
+	case "open":
+		return s.open(player, now)
+	case "continue":
+		return s.closeSprint(player, now)
 	case "guess":
 		return s.guess(player, a.Target, now)
 	}
@@ -372,8 +379,49 @@ func (s *State) push(player string, backdoor *bool, now time.Time) error {
 	if len(s.Pushes) < len(s.Selection) {
 		return nil
 	}
+	// The commits are shuffled so the order they're opened in says nothing about who
+	// pushed them. Apply has no rng of its own; the time of the last push seeds one.
+	s.Commits = s.Commits[:0]
+	for _, p := range s.Selection {
+		s.Commits = append(s.Commits, s.Pushes[p])
+	}
+	rng := rand.New(rand.NewPCG(uint64(now.UnixNano()), uint64(s.Sprint)))
+	rng.Shuffle(len(s.Commits), func(i, j int) { s.Commits[i], s.Commits[j] = s.Commits[j], s.Commits[i] })
+	s.Opened = 0
+	s.Pushes = map[string]bool{}
+	s.enter(PhaseReveal, now)
+	return nil
+}
+
+// open shows the next commit to the whole table.
+func (s *State) open(player string, now time.Time) error {
+	if s.Phase != PhaseReveal {
+		return ruleErr("Agora não é hora de abrir os commits.")
+	}
+	if player != s.leaderID() {
+		return ruleErr("Só o Scrum Master abre os commits.")
+	}
+	if s.Opened >= len(s.Commits) {
+		return ruleErr("Todos os commits já foram abertos.")
+	}
+	s.Opened++
+	s.PhaseStartedAt = now
+	return nil
+}
+
+// closeSprint records the sprint once every commit is open and moves the match on.
+func (s *State) closeSprint(player string, now time.Time) error {
+	if s.Phase != PhaseReveal {
+		return ruleErr("Agora não é hora de fechar a sprint.")
+	}
+	if player != s.leaderID() {
+		return ruleErr("Só o Scrum Master fecha a sprint.")
+	}
+	if s.Opened < len(s.Commits) {
+		return ruleErr("Abra todos os commits antes.")
+	}
 	backdoors := 0
-	for _, b := range s.Pushes {
+	for _, b := range s.Commits {
 		if b {
 			backdoors++
 		}
@@ -382,7 +430,7 @@ func (s *State) push(player string, backdoor *bool, now time.Time) error {
 		Squad: slices.Clone(s.Selection), Backdoors: backdoors,
 		Rollback: backdoors >= BackdoorsNeeded(len(s.Players), s.Sprint),
 	})
-	s.Pushes = map[string]bool{}
+	s.Commits, s.Opened = nil, 0
 	s.Selection = nil
 	switch {
 	case s.rollbacks() >= ToWin:

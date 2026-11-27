@@ -50,6 +50,9 @@ type View struct {
 	Proposals      []Proposal      `json:"proposals"`
 	Options        Options         `json:"options"`
 	PhaseStartedAt time.Time       `json:"phase_started_at"`
+	Commits        []bool          `json:"commits"`                   // the commits opened so far (reveal phase)
+	CommitsTotal   int             `json:"commits_total"`             // how many there are to open
+	BackdoorsNeed  int             `json:"backdoors_needed"`          // backdoors that roll this sprint back
 	SocialEngineer string          `json:"social_engineer,omitempty"` // public once the guess starts
 	Me             Me              `json:"me"`
 	Winner         string          `json:"winner,omitempty"`
@@ -75,6 +78,12 @@ func ViewFor(s *State, player string) View {
 		Proposals:      nonNilProposals(s.Proposals),
 		Options:        s.Options,
 		PhaseStartedAt: s.PhaseStartedAt,
+		Commits:        []bool{},
+		BackdoorsNeed:  BackdoorsNeeded(n, s.Sprint),
+	}
+	if s.Phase == PhaseReveal {
+		v.Commits = slices.Clone(s.Commits[:s.Opened])
+		v.CommitsTotal = len(s.Commits)
 	}
 	if n >= 7 {
 		v.DoubleSprint = 3
