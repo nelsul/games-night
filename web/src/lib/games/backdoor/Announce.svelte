@@ -7,31 +7,38 @@
 		text?: string;
 		tone?: 'turn' | 'good' | 'bad';
 		faces?: string[];
-		/** How long it stays, in ms (a tap closes it sooner). */
+		/** How long it stays, in ms (at least MIN_HOLD; a double tap closes it sooner). */
 		hold?: number;
 	}
 </script>
 
 <script lang="ts">
 	// A full-screen card between phases ("Vez de Ana montar o squad"), so a change of
-	// turn is an event instead of a silent swap of screens. It closes itself; a tap
-	// closes it sooner.
+	// turn is an event instead of a silent swap of screens. It stays at least 5 seconds,
+	// so everyone at the table can read it; a double tap closes it sooner (a single tap
+	// doesn't, so a stray touch can't skip it).
 	import { fade, fly, scale } from 'svelte/transition';
 	import { backOut } from 'svelte/easing';
 	import { ms } from '$lib/feel.svelte';
 	import type { RoomPlayer } from '$lib/api';
 	import Avatar from '$lib/components/Avatar.svelte';
 
-	let {
-		item,
-		people,
-		hurry = false,
-		onclose
-	}: { item: Announcement; people: Record<string, RoomPlayer>; hurry?: boolean; onclose: () => void } = $props();
+	let { item, people, onclose }: { item: Announcement; people: Record<string, RoomPlayer>; onclose: () => void } = $props();
 
-	// With more waiting behind it, an announcement steps aside sooner.
-	const hold = $derived(hurry ? 1100 : (item.hold ?? 1900));
+	const MIN_HOLD = 5000;
+	const hold = $derived(Math.max(MIN_HOLD, item.hold ?? MIN_HOLD));
+
+	// Two taps within this long close it.
+	let lastTap = 0;
+	function tap() {
+		const now = Date.now();
+		if (now - lastTap < 400) onclose();
+		lastTap = now;
+	}
+	// One timer per announcement: reading item makes a new one start its own full time,
+	// even when it lasts as long as the one before.
 	$effect(() => {
+		void item;
 		const t = setTimeout(onclose, hold);
 		return () => clearTimeout(t);
 	});
@@ -39,9 +46,9 @@
 
 <button
 	class="announce {item.tone ?? ''}"
-	onclick={onclose}
+	onclick={tap}
 	aria-live="assertive"
-	aria-label="{item.kicker}. {item.title}. {item.text ?? ''} Toque para fechar."
+	aria-label="{item.kicker}. {item.title}. {item.text ?? ''} Toque duas vezes para fechar."
 	in:fade={{ duration: ms(140) }}
 	out:fade={{ duration: ms(220) }}
 >
@@ -59,6 +66,7 @@
 		{/if}
 		<strong class="title" in:scale={{ start: 0.7, duration: ms(360), delay: ms(120), easing: backOut }}>{item.title}</strong>
 		{#if item.text}<span class="text" in:fly={{ y: 12, duration: ms(260), delay: ms(260) }}>{item.text}</span>{/if}
+		<span class="hint" aria-hidden="true">Toque duas vezes para pular</span>
 		<span class="bar" aria-hidden="true" style="animation-duration: {hold}ms"></span>
 	{/key}
 </button>
@@ -85,6 +93,10 @@
 		cursor: pointer;
 		font: inherit;
 		overflow: hidden;
+		/* No double-tap zoom on phones: two taps skip the announcement. */
+		touch-action: manipulation;
+		user-select: none;
+		-webkit-user-select: none;
 	}
 	.announce.good {
 		--tone: #3fb950;
@@ -138,6 +150,14 @@
 		font-size: 16px;
 		line-height: 1.4;
 		color: #9198a1;
+	}
+	.hint {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: calc(18px + var(--safe-bottom));
+		font-size: 12px;
+		color: #6e7681;
 	}
 	.bar {
 		position: absolute;
