@@ -193,10 +193,20 @@
 		}
 	}
 
+	let leaveError = $state('');
+
 	async function leave() {
+		leaveError = '';
+		try {
+			await api.post(`/rooms/${code}/leave`);
+		} catch (err) {
+			// Stay in the room and say why (for example, mid-match).
+			leaveError = err instanceof ApiError ? err.message : 'Não deu para sair da sala. Tente de novo.';
+			setTimeout(() => (leaveError = ''), 5000);
+			return;
+		}
 		socket?.close();
 		socket = null;
-		await api.post(`/rooms/${code}/leave`).catch(() => {});
 		await goto('/', { replaceState: true });
 	}
 </script>
@@ -373,6 +383,10 @@
 	</div>
 {/if}
 
+{#if leaveError}
+	<p class="leave-error" role="alert">{leaveError}</p>
+{/if}
+
 {#if toast && !chatOpen}
 	<button class="toast" onclick={openChat}>
 		<strong>{toast.user.name}:</strong> {toast.body}
@@ -436,6 +450,23 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+	.leave-error {
+		position: fixed;
+		left: 50%;
+		top: calc(10px + var(--safe-top));
+		transform: translateX(-50%);
+		z-index: 90;
+		width: min(92vw, 520px);
+		margin: 0;
+		background: #3a1214;
+		border: 1px solid var(--brand);
+		color: #fff;
+		border-radius: 14px;
+		padding: 12px 14px;
+		font-size: 14px;
+		line-height: 1.35;
+		animation: gn-shake 0.4s ease-in-out;
 	}
 	.toast {
 		position: fixed;

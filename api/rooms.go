@@ -391,8 +391,17 @@ func (a *App) handleLeaveRoom(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	uid := currentUser(ctx)
 	if rr.Status == "playing" {
-		writeError(w, 409, "A partida está rolando. Peça para o host encerrar antes de sair.")
-		return
+		// The match may have ended without the room noticing (matches that ended before
+		// rooms had a "finished" status): ask the game before refusing.
+		finished, err := a.settleRoom(ctx, rr.ID, rr.GameID)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		if !finished {
+			writeError(w, 409, "A partida está rolando. Peça para o host encerrar antes de sair.")
+			return
+		}
 	}
 	tx, err := a.db.Begin(ctx)
 	if err != nil {
