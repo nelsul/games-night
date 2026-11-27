@@ -29,7 +29,7 @@ Terms used in code, issues and PRs. The site shows the Portuguese word in parent
 - **Hackers** (*Time Hackers*): the hidden minority, about 40% of the table (2 with 5–6 players, 3 with 7–9, 4 with 10–11, 5 with 12). They know each other (except the Freelancer). Win with 3 rollbacks, 5 failed meetings in a row, or the Social Engineer's correct guess.
 - **Badge** (*crachá*): a player's secret role card.
 - **Roles**, always in play: **Dev**; **Security Analyst** (*Analista de Segurança*, a dev who sees the hackers except the Zero-day); **Hacker**; **Social Engineer** (*Engenharia Social*, a hacker who gets one last guess at the Security Analyst if the devs ship 3 sprints).
-- **Optional roles** (host options): **Product Owner** (a dev who sees the Security Analyst, and the Zero-day as a second candidate); **Zero-day** (a hacker the Security Analyst can't see, 7+ players); **Freelancer** (a hacker who doesn't know the other hackers and whom they don't know, 7+ players). Special hackers replace regular ones.
+- **Optional roles** (host options): **Product Owner** (a dev who sees the Security Analyst, and the Deepfake as a second candidate when it's in play); **Zero-day** (a hacker the Security Analyst can't see, 7+ players); **Deepfake** (a hacker the Product Owner sees as a possible Security Analyst; only with the Product Owner); **Freelancer** (a hacker who doesn't know the other hackers and whom they don't know, 7+ players). Special hackers replace regular ones, and every role that is on is always dealt: a match only starts when the table has a hacker seat for each hacker role that is on (the Social Engineer always takes one).
 - **Sprint**: one of up to 5 rounds. Ends **Deploy** or **Rollback**. With 7+ players, sprint 4 needs 2 backdoors to roll back.
 - **Scrum Master**: the player proposing the squad this round. Rotates around the table.
 - **Squad**: the players the Scrum Master proposes for a sprint, shown as a pull request.
@@ -37,5 +37,6 @@ Terms used in code, issues and PRs. The site shows the Portuguese word in parent
 - **Review**: everyone's open vote on the squad: **approve** (*Approve*/LGTM) or **request changes**.
 - **Failed meeting** (*reunião sem decisão*): a squad that was not approved. Five in a row and the hackers win.
 - **Push**: each squad member's secret choice: a clean `git push`, or (hackers only) `git push --backdoor`. One backdoor rolls the sprint back.
+- **Reveal** (*conferir os commits*): after the pushes, the Scrum Master opens the sprint's commits one at a time, shuffled, so the table sees each clean push or backdoor but never who made it. The sprint is recorded when the Scrum Master closes it.
 - **Match** data lives in the game's own Postgres schema (`backdoor.matches`, `backdoor.actions`), never in the hub's tables.
 - **Post-mortem**: the end screen that reveals every badge.
