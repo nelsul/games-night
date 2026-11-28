@@ -92,7 +92,15 @@ func (*Game) Act(ctx context.Context, tx pgx.Tx, roomID, userID string, raw json
 	if err != nil {
 		return err
 	}
-	if err := Apply(&m.state, userID, a, now, newRng()); err != nil {
+	if a.Type == "score" {
+		if !games.IsHost(ctx, userID) {
+			return ruleErr("Só o host da sala ajusta o placar.")
+		}
+		err = Adjust(&m.state, a.Team, a.Delta)
+	} else {
+		err = Apply(&m.state, userID, a, now, newRng())
+	}
+	if err != nil {
 		return err
 	}
 	return m.save(ctx, tx, userID, a)

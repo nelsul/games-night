@@ -82,16 +82,30 @@
 
 	// ---- The clock ----
 	let deadline = 0;
+	let readDeadline = 0;
+	let buzzDeadline = 0;
 	let now = $state(performance.now());
 	$effect(() => {
 		// Every snapshot restarts the count from what the server says is left.
-		deadline = performance.now() + match.remaining_ms;
-		now = performance.now();
+		const t = performance.now();
+		deadline = t + match.remaining_ms;
+		readDeadline = t + (match.reading_ms ?? 0);
+		buzzDeadline = t + (match.buzz_wait_ms ?? 0);
+		now = t;
 	});
 	const tick = setInterval(() => (now = performance.now()), 200);
 	const left = $derived(match.phase === 'turn' ? Math.max(deadline - now, 0) : 0);
-	const secondsLeft = $derived(Math.ceil(left / 1000));
-	const share = $derived(match.seconds ? left / (match.seconds * 1000) : 0);
+	// The first seconds of a turn are for reading the card: the clock waits, full.
+	const readLeft = $derived(match.phase === 'turn' ? Math.max(readDeadline - now, 0) : 0);
+	const reading = $derived(readLeft > 0);
+	const readSeconds = $derived(Math.ceil(readLeft / 1000));
+	const buzzSeconds = $derived(match.phase === 'turn' ? Math.ceil(Math.max(buzzDeadline - now, 0) / 1000) : 0);
+	const clockLeft = $derived(Math.min(left, match.seconds * 1000));
+	const secondsLeft = $derived(Math.ceil(clockLeft / 1000));
+	const share = $derived(match.seconds ? clockLeft / (match.seconds * 1000) : 0);
+
+	// ---- Fixing the score (host only) ----
+	let fixing = $state(false);
 
 	// When the clock runs out any phone asks the server to end the turn. The first one
 	// wins; the rest are told it is already over, which is fine.
@@ -200,7 +214,23 @@
 	</section>
 
 	{#if match.phase !== 'over'}
-		<p class="turnline small center">Turno {match.turn + 1} de {match.turns}</p>
+		<p class="turnline small center">
+			Turno {match.turn + 1} de {match.turns}
+			{#if isHost}· <button class="link fix-toggle" onclick={() => (fixing = !fixing)}>{fixing ? 'Pronto' : 'Ajustar placar'}</button>{/if}
+		</p>
+		{#if isHost && fixing}
+			<!-- The host can undo a mistake: a buzz that shouldn't count, a hit marked late. -->
+			<ul class="fix" class:many={match.teams.length > 2} aria-label="Ajustar placar">
+				{#each match.teams as t, i (i)}
+					<li style="--c:{color(i)}">
+						<span class="fix-name"><span class="dot"></span>{teamName(i)}</span>
+						<button class="fix-btn" onclick={() => send({ type: 'score', team: i, delta: -1 })} disabled={busy} aria-label="Tirar um ponto do time {teamName(i)}">−</button>
+						<b class="fix-score">{t.score}</b>
+						<button class="fix-btn" onclick={() => send({ type: 'score', team: i, delta: 1 })} disabled={busy} aria-label="Dar um ponto ao time {teamName(i)}">+</button>
+					</li>
+				{/each}
+			</ul>
+		{/if}
 	{/if}
 
 	{#key match.phase + ':' + match.turn}
@@ -228,7 +258,14 @@
 					{/if}
 				</section>
 			{:else if match.phase === 'turn'}
-				<div class="clock" class:low={secondsLeft <= 10} style="--c:{color(match.active_team)}" role="timer" aria-label="{secondsLeft} segundos">
+				{#if reading}
+					<p class="reading" style="--c:{color(match.active_team)}" role="status">
+						{#if match.role === 'narrator'}Leia a carta: o relógio começa em <b>{readSeconds}</b>
+						{:else if match.role === 'mate'}Prepare-se: {first(match.narrator)} está lendo a carta · <b>{readSeconds}</b>
+						{:else}{first(match.narrator)} está lendo a carta · <b>{readSeconds}</b>{/if}
+					</p>
+				{/if}
+				<div class="clock" class:low={!reading && secondsLeft <= 10} class:paused={reading} style="--c:{color(match.active_team)}" role="timer" aria-label="{secondsLeft} segundos">
 					<span class="clock-n">{secondsLeft}</span>
 					<span class="clock-bar"><i style="width:{share * 100}%"></i></span>
 				</div>
@@ -251,13 +288,15 @@
 						<button class="btn skip" onclick={() => send({ type: 'skip', seq: match.card_seq })} disabled={busy || match.skips_left === 0}>
 							Pular ({match.skips_left})
 						</button>
-						<button class="btn hit" onclick={() => send({ type: 'hit', seq: match.card_seq })} disabled={busy}>
+						<button class="btn hit" onclick={() => send({ type: 'hit', seq: match.card_seq })} disabled={busy || reading}>
 							<Icon name="check" size={22} />Acertou
 						</button>
 					</div>
 					<p class="small center">Quando o seu time disser a palavra, toque em Acertou. Não diga as proibidas.</p>
 				{:else if match.role === 'watcher'}
-					<button class="btn buzz block" onclick={() => send({ type: 'buzz', seq: match.card_seq })} disabled={busy}>Proibida!</button>
+					<button class="btn buzz block" onclick={() => send({ type: 'buzz', seq: match.card_seq })} disabled={busy || reading || buzzSeconds > 0}>
+						{buzzSeconds > 0 ? `Proibida! · ${buzzSeconds}` : 'Proibida!'}
+					</button>
 					<p class="small center">{first(match.narrator)} disse uma palavra proibida (ou a própria palavra)? Aperte.</p>
 				{:else}
 					<section class="panel guess">
@@ -784,6 +823,74 @@
 	}
 	.played li.skip {
 		opacity: 0.75;
+	}
+
+	/* ---- reading time and fixing the score ---- */
+	.reading {
+		margin: 0;
+		padding: 10px 14px;
+		border-radius: 12px;
+		background: color-mix(in srgb, var(--c) 20%, #1f1038);
+		border: 1px solid var(--c);
+		text-align: center;
+		font-weight: 600;
+	}
+	.reading b {
+		font-family: var(--display);
+		font-size: 20px;
+		color: var(--c);
+	}
+	.clock.paused {
+		opacity: 0.55;
+	}
+	.fix-toggle {
+		font-size: inherit;
+	}
+	.fix {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 6px;
+	}
+	.fix.many {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.fix li {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 8px;
+		border-radius: 12px;
+		background: #2a1850;
+	}
+	.fix-name {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 13px;
+		font-weight: 700;
+		overflow: hidden;
+		white-space: nowrap;
+	}
+	.fix-btn {
+		width: 34px;
+		height: 34px;
+		border-radius: 10px;
+		border: 1px solid #ffffff33;
+		background: #ffffff14;
+		color: #fff;
+		font-size: 20px;
+		line-height: 1;
+	}
+	.fix-score {
+		min-width: 22px;
+		text-align: center;
+		font-family: var(--display);
+		font-size: 20px;
+		color: var(--c);
 	}
 
 	/* ---- the end ---- */

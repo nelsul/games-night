@@ -27,8 +27,12 @@ export interface MatchView {
 	/** narrator: gives clues. mate: guesses. watcher: sees the card and can buzz. */
 	role: 'narrator' | 'mate' | 'watcher';
 	seconds: number;
-	/** Time left on the clock when this snapshot was made. */
+	/** Time left on the clock when this snapshot was made, reading time included. */
 	remaining_ms: number;
+	/** Reading time left at the start of a turn: the clock waits for it. */
+	reading_ms: number;
+	/** How long until "Proibida!" works again after the last buzz. */
+	buzz_wait_ms: number;
 	/** Only the narrator and the other teams get the card. */
 	card?: Card;
 	card_seq: number;

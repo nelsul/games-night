@@ -22,9 +22,9 @@ export const info: GameInfo = {
 		'Em duplas, trios ou dois times, uma pessoa por vez dá dicas em voz alta para o time descobrir uma palavra. O problema: cada carta tem cinco palavras proibidas, e o time rival está de olho, pronto para apertar a campainha.',
 	howTo: [
 		'Os times são sorteados ao começar. Cada turno joga um time, e o narrador muda a cada volta.',
-		'O narrador vê a palavra e as 5 proibidas, e dá dicas falando. Os parceiros adivinham em voz alta, sem digitar nada.',
-		'Cada acerto vale 1 ponto. Os outros times veem a carta e apertam "Proibida!" quando ouvem uma palavra proibida: o time perde 1 ponto e a carta é descartada.',
-		'O narrador pode pular até 3 cartas por turno. Quando o tempo acaba, todo mundo vê como foi, e a vez passa para o próximo time. No fim, o time com mais pontos ganha.'
+		'O narrador vê a palavra e as 5 proibidas, e dá dicas falando. Os parceiros adivinham em voz alta, sem digitar nada. No começo do turno ele tem 10 segundos para ler a carta antes de o relógio correr.',
+		'Cada acerto vale 1 ponto. Os outros times veem a carta e apertam "Proibida!" quando ouvem uma palavra proibida: o time perde 1 ponto e a carta é descartada. Depois de cada "Proibida!" a campainha descansa 5 segundos, para ninguém tirar dois pontos pelo mesmo erro.',
+		'O narrador pode pular até 3 cartas por turno. Quando o tempo acaba, todo mundo vê como foi, e a vez passa para o próximo time. No fim, o time com mais pontos ganha. Se algo for marcado errado, o host da sala pode ajustar o placar.'
 	],
 	roles: [
 		{

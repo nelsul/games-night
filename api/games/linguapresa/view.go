@@ -31,7 +31,9 @@ type MatchView struct {
 	Narrator   string       `json:"narrator"`
 	Role       string       `json:"role"` // narrator | mate | watcher
 	Seconds    int          `json:"seconds"`
-	RemainingM int64        `json:"remaining_ms"` // while the clock runs
+	RemainingM int64        `json:"remaining_ms"` // while the clock runs, reading time included
+	ReadingM   int64        `json:"reading_ms"`   // reading time left at the start of a turn
+	BuzzWaitM  int64        `json:"buzz_wait_ms"` // until "Proibida!" works again
 	Card       *CardView    `json:"card,omitempty"`
 	CardSeq    int          `json:"card_seq"`
 	SkipsLeft  int          `json:"skips_left"`
@@ -75,6 +77,8 @@ func ViewFor(s *State, user string, now time.Time) *MatchView {
 	}
 	if s.Phase == PhaseTurn {
 		v.RemainingM = max(s.EndsAt.Sub(now).Milliseconds(), 0)
+		v.ReadingM = max(s.ReadUntil.Sub(now).Milliseconds(), 0)
+		v.BuzzWaitM = max(s.BuzzOpenAt.Sub(now).Milliseconds(), 0)
 		if s.Card >= 0 && v.Role != "mate" {
 			c := cards[s.Card]
 			v.Card = &CardView{Word: c.Word, Taboo: c.Taboo}

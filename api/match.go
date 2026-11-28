@@ -152,7 +152,7 @@ func (a *App) handleMatchAction(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	ctx := r.Context()
+	ctx := games.WithHost(r.Context(), rr.HostID)
 	err := pgx.BeginFunc(ctx, a.db, func(tx pgx.Tx) error {
 		if err := asGame(ctx, tx, e, func() error { return e.Act(ctx, tx, rr.ID, currentUser(ctx), raw, time.Now()) }); err != nil {
 			return err
