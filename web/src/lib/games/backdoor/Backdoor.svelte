@@ -37,6 +37,10 @@
 		onplayer?: (userId: string) => void;
 	} = $props();
 
+	/** Sprints still ahead (1-based) that need 2 backdoors to roll back. */
+	const doubleLeft = $derived(
+		match.backdoors_per_sprint.flatMap((need, i) => (need > 1 && i >= match.sprint ? [i + 1] : []))
+	);
 	const onlineCount = $derived(room.players.filter((p) => p.online).length);
 
 	// What just happened at the table: sounds, haptics and the announcements between
@@ -292,18 +296,18 @@
 					class:ok={r && !r.rollback}
 					class:bad={r?.rollback}
 					class:now={!r && i === match.sprint && match.phase !== 'over'}
-					aria-label="Sprint {i + 1}: {r ? (r.rollback ? 'rollback' : 'deploy') : `${size} pessoas`}{i === match.double_sprint
+					aria-label="Sprint {i + 1}: {r ? (r.rollback ? 'rollback' : 'deploy') : `${size} pessoas`}{match.backdoors_per_sprint[i] > 1
 						? ', precisa de 2 backdoors'
 						: ''}"
 				>
 					{#if r && !r.rollback}<Icon name="check" size={18} />
 					{:else if r}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5" /></svg>
-					{:else}{size}{#if i === match.double_sprint}<sup>★</sup>{/if}{/if}
+					{:else}{size}{#if match.backdoors_per_sprint[i] > 1}<sup>★</sup>{/if}{/if}
 				</li>
 			{/each}
 		</ol>
-		{#if match.double_sprint >= 0 && match.sprint <= match.double_sprint && match.phase !== 'over' && match.phase !== 'guess'}
-			<p class="muted tiny">★ Na sprint {match.double_sprint + 1}, só dá rollback com 2 backdoors.</p>
+		{#if doubleLeft.length && match.phase !== 'over' && match.phase !== 'guess'}
+			<p class="muted tiny">★ {doubleLeft.length === 1 ? `Na sprint ${doubleLeft[0]}` : `Nas sprints ${doubleLeft.join(' e ')}`}, só dá rollback com 2 backdoors.</p>
 		{/if}
 	</section>
 

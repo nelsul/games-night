@@ -49,7 +49,7 @@ const (
 
 const (
 	MinPlayers        = 5
-	MaxPlayers        = 12
+	MaxPlayers        = 16
 	SpecialHackersMin = 7 // Zero-day and Freelancer need at least this many players
 	Sprints           = 5
 	ToWin             = 3 // deploys or rollbacks
@@ -57,7 +57,7 @@ const (
 )
 
 // About 40% of the table plays for the hackers.
-var hackersFor = map[int]int{5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4, 11: 4, 12: 5}
+var hackersFor = map[int]int{5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4, 11: 4, 12: 5, 13: 5, 14: 6, 15: 6, 16: 7}
 
 var squadSizes = map[int][Sprints]int{
 	5:  {2, 3, 2, 3, 3},
@@ -68,11 +68,16 @@ var squadSizes = map[int][Sprints]int{
 	10: {3, 4, 4, 5, 5},
 	11: {3, 4, 4, 5, 5},
 	12: {3, 4, 5, 5, 6},
+	13: {4, 4, 5, 6, 6},
+	14: {4, 5, 5, 6, 6},
+	15: {4, 5, 6, 6, 7},
+	16: {4, 5, 6, 7, 7},
 }
 
 // BackdoorsNeeded is how many backdoors roll back a sprint (sprint is 0-based).
+// From 7 players the 4th sprint needs 2; from 13, with squads of 6 or 7, the 5th too.
 func BackdoorsNeeded(players, sprint int) int {
-	if sprint == 3 && players >= 7 {
+	if (sprint == 3 && players >= 7) || (sprint == 4 && players >= 13) {
 		return 2
 	}
 	return 1
@@ -125,7 +130,7 @@ func (o Options) CheckStart(players int) error {
 		return err
 	}
 	if players < MinPlayers || players > MaxPlayers {
-		return ruleErr("O Backdoor é para 5 a 12 pessoas.")
+		return ruleErr("O Backdoor é para 5 a 16 pessoas.")
 	}
 	if (o.ZeroDay || o.Freelancer) && players < SpecialHackersMin {
 		return ruleErr("Zero-day e Freelancer só entram com 7 pessoas ou mais. Desligue essas opções ou chame mais gente.")

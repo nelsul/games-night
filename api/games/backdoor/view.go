@@ -40,7 +40,7 @@ type View struct {
 	Phase          Phase           `json:"phase"`
 	Sprint         int             `json:"sprint"`
 	SquadSizes     [Sprints]int    `json:"squad_sizes"`
-	DoubleSprint   int             `json:"double_sprint"` // 0-based sprint needing 2 backdoors, or -1
+	BackdoorsPer   [Sprints]int    `json:"backdoors_per_sprint"` // backdoors that roll back each sprint
 	SquadSize      int             `json:"squad_size"`
 	Leader         string          `json:"leader"`
 	FailedMeetings int             `json:"failed_meetings"`
@@ -69,7 +69,6 @@ func ViewFor(s *State, player string) View {
 		Phase:          s.Phase,
 		Sprint:         s.Sprint,
 		SquadSizes:     squadSizes[n],
-		DoubleSprint:   -1,
 		SquadSize:      s.SquadSize(),
 		Leader:         s.leaderID(),
 		FailedMeetings: s.FailedMeetings,
@@ -86,8 +85,8 @@ func ViewFor(s *State, player string) View {
 		v.Commits = slices.Clone(s.Commits[:s.Opened])
 		v.CommitsTotal = len(s.Commits)
 	}
-	if n >= 7 {
-		v.DoubleSprint = 3
+	for i := range v.BackdoorsPer {
+		v.BackdoorsPer[i] = BackdoorsNeeded(n, i)
 	}
 	for _, p := range s.Players {
 		_, voted := s.Votes[p]

@@ -159,8 +159,8 @@ func TestSetupChecksOptions(t *testing.T) {
 	if _, err := Setup(players(4), Options{}, rand.New(rand.NewPCG(1, 1)), t0); err == nil {
 		t.Error("4 players accepted")
 	}
-	if _, err := Setup(players(13), Options{}, rand.New(rand.NewPCG(1, 1)), t0); err == nil {
-		t.Error("13 players accepted")
+	if _, err := Setup(players(MaxPlayers+1), Options{}, rand.New(rand.NewPCG(1, 1)), t0); err == nil {
+		t.Errorf("%d players accepted", MaxPlayers+1)
 	}
 	if err := (Options{TimerSeconds: 45}).CheckLobby(); err == nil {
 		t.Error("odd timer accepted")
@@ -545,5 +545,20 @@ func TestOptionCombinationsThatDontFit(t *testing.T) {
 	}
 	if err := (Options{ZeroDay: true}).CheckStart(6); err == nil {
 		t.Error("Zero-day with 6 people")
+	}
+}
+
+func TestBigTablesNeedTwoBackdoorsInTheLastSprintsToo(t *testing.T) {
+	cases := []struct{ players, sprint, want int }{
+		{6, 3, 1}, {7, 3, 2}, {12, 4, 1}, {13, 3, 2}, {13, 4, 2}, {16, 4, 2}, {16, 2, 1},
+	}
+	for _, c := range cases {
+		if got := BackdoorsNeeded(c.players, c.sprint); got != c.want {
+			t.Errorf("%d players, sprint %d: %d backdoors, want %d", c.players, c.sprint+1, got, c.want)
+		}
+	}
+	s := setup(t, 16, Options{ZeroDay: true, Deepfake: true, Freelancer: true, ProductOwner: true}, 3)
+	if len(hackers(s)) != 7 || len(s.Players) != 16 {
+		t.Fatalf("16 players with every role: %d hackers", len(hackers(s)))
 	}
 }
