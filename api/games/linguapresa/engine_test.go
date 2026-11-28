@@ -144,11 +144,12 @@ func TestTurnScoring(t *testing.T) {
 	s := newMatch(t, 4, Options{})
 	n := startTurn(t, s)
 	team := s.ActiveTeam()
-	do(t, s, n, Action{Type: "hit", Seq: s.CardSeq}, t0.Add(5*time.Second))
-	do(t, s, n, Action{Type: "hit", Seq: s.CardSeq}, t0.Add(9*time.Second))
-	do(t, s, n, Action{Type: "skip", Seq: s.CardSeq}, t0.Add(10*time.Second))
+	go_ := t0.Add(ReadTime) // the clock starts after the reading time
+	do(t, s, n, Action{Type: "hit", Seq: s.CardSeq}, go_.Add(5*time.Second))
+	do(t, s, n, Action{Type: "hit", Seq: s.CardSeq}, go_.Add(9*time.Second))
+	do(t, s, n, Action{Type: "skip", Seq: s.CardSeq}, go_.Add(10*time.Second))
 	other := s.Teams[1-team].Players[0]
-	do(t, s, other, Action{Type: "buzz", Seq: s.CardSeq}, t0.Add(12*time.Second))
+	do(t, s, other, Action{Type: "buzz", Seq: s.CardSeq}, go_.Add(12*time.Second))
 	if got := s.Teams[team].Score; got != 1 {
 		t.Fatalf("score = %d, want 2 hits - 1 buzz = 1", got)
 	}
@@ -207,7 +208,10 @@ func TestTimeUp(t *testing.T) {
 	if err := Apply(s, "a", Action{Type: "time_up"}, t0.Add(10*time.Second), rng()); err == nil {
 		t.Fatal("the clock has not run out")
 	}
-	late := t0.Add(46 * time.Second)
+	if err := Apply(s, "a", Action{Type: "time_up"}, t0.Add(46*time.Second), rng()); err == nil {
+		t.Fatal("the reading time does not count against the clock")
+	}
+	late := t0.Add(ReadTime + 46*time.Second)
 	if err := Apply(s, n, Action{Type: "hit", Seq: s.CardSeq}, late, rng()); err == nil {
 		t.Fatal("no hits after the time is up")
 	}
@@ -222,9 +226,9 @@ func TestMatchEndsAndWinners(t *testing.T) {
 	for s.Phase != PhaseOver {
 		n := startTurn(t, s)
 		if s.ActiveTeam() == 0 {
-			do(t, s, n, Action{Type: "hit", Seq: s.CardSeq}, t0.Add(time.Second))
+			do(t, s, n, Action{Type: "hit", Seq: s.CardSeq}, t0.Add(ReadTime+time.Second))
 		}
-		do(t, s, n, Action{Type: "finish"}, t0.Add(2*time.Second))
+		do(t, s, n, Action{Type: "finish"}, t0.Add(ReadTime+2*time.Second))
 		do(t, s, "a", Action{Type: "next"}, t0.Add(3*time.Second))
 	}
 	if s.Turn != s.Turns {
@@ -301,5 +305,68 @@ func TestBotWaitsBeforeStarting(t *testing.T) {
 	do(t, s, "a", Action{Type: "next"}, later)
 	if got := botPause(s, start, later); got != readyPause {
 		t.Fatalf("pause at the start of turn 2 = %v, want %v", got, readyPause)
+	}
+}
+
+func TestReadingTimeBeforeTheClock(t *testing.T) {
+	s := newMatch(t, 4, Options{})
+	n := startTurn(t, s)
+	rival := s.Teams[1-s.ActiveTeam()].Players[0]
+	reading := t0.Add(ReadTime - time.Second)
+	if err := Apply(s, n, Action{Type: "hit", Seq: s.CardSeq}, reading, rng()); err == nil {
+		t.Fatal("no hits while the narrator reads")
+	}
+	if err := Apply(s, rival, Action{Type: "buzz", Seq: s.CardSeq}, reading, rng()); err == nil {
+		t.Fatal("no buzz while the narrator reads")
+	}
+	do(t, s, n, Action{Type: "skip", Seq: s.CardSeq}, reading) // a bad card can go
+	if v := ViewFor(s, rival, t0.Add(4*time.Second)); v.ReadingM != 6000 || v.RemainingM != 6000+60000 {
+		t.Fatalf("view: reading %d ms, remaining %d ms", v.ReadingM, v.RemainingM)
+	}
+}
+
+func TestBuzzCooldown(t *testing.T) {
+	s := newMatch(t, 6, Options{})
+	n := startTurn(t, s)
+	team := s.ActiveTeam()
+	rivals := s.Teams[(team+1)%len(s.Teams)].Players
+	at := t0.Add(ReadTime + time.Second)
+	do(t, s, rivals[0], Action{Type: "buzz", Seq: s.CardSeq}, at)
+	// Everyone else was tapping too, already on the next card.
+	if err := Apply(s, rivals[1], Action{Type: "buzz", Seq: s.CardSeq}, at.Add(300*time.Millisecond), rng()); err == nil {
+		t.Fatal("a second buzz right away should be refused")
+	}
+	if got := s.Teams[team].Score; got != -1 {
+		t.Fatalf("score = %d, want -1 for one buzz", got)
+	}
+	if v := ViewFor(s, rivals[1], at.Add(time.Second)); v.BuzzWaitM != 4000 {
+		t.Fatalf("buzz wait = %d ms, want 4000", v.BuzzWaitM)
+	}
+	do(t, s, n, Action{Type: "hit", Seq: s.CardSeq}, at.Add(time.Second)) // the narrator goes on
+	do(t, s, rivals[1], Action{Type: "buzz", Seq: s.CardSeq}, at.Add(BuzzCooldown))
+	if got := s.Teams[team].Score; got != -1 {
+		t.Fatalf("score = %d, want 1 hit - 2 buzzes = -1", got)
+	}
+}
+
+func TestAdjustScore(t *testing.T) {
+	s := newMatch(t, 4, Options{})
+	if err := Adjust(s, 1, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := Adjust(s, 0, -1); err != nil {
+		t.Fatal(err)
+	}
+	if s.Teams[0].Score != -1 || s.Teams[1].Score != 1 {
+		t.Fatalf("scores %d %d", s.Teams[0].Score, s.Teams[1].Score)
+	}
+	for _, c := range [][2]int{{2, 1}, {-1, 1}, {0, 3}, {0, 0}} {
+		if err := Adjust(s, c[0], c[1]); err == nil {
+			t.Errorf("adjust %v should be refused", c)
+		}
+	}
+	s.Phase = PhaseOver
+	if err := Adjust(s, 0, 1); err == nil {
+		t.Error("no adjusting after the match")
 	}
 }

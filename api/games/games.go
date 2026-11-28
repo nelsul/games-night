@@ -49,6 +49,20 @@ type Engine interface {
 	Stop(ctx context.Context, tx pgx.Tx, roomID string) error
 }
 
+type hostKey struct{}
+
+// WithHost marks ctx with the room's host. The hub sets it before calling Act, so a game
+// can keep some actions (like fixing the score) to the host.
+func WithHost(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, hostKey{}, userID)
+}
+
+// IsHost reports whether userID hosts the room the action came from.
+func IsHost(ctx context.Context, userID string) bool {
+	host, _ := ctx.Value(hostKey{}).(string)
+	return host != "" && host == userID
+}
+
 // BotPlayer is implemented by games whose matches bots can play. BotStep applies at
 // most one action by one of the given bots and reports whether a bot acted; the hub
 // calls it again (with a pause, so people can follow) until no bot has anything to do.

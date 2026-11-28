@@ -17,6 +17,11 @@ const (
 	MaxSkips       = 3
 	DefaultSeconds = 60
 	DefaultLaps    = 1
+	// ReadTime is how long the narrator has to read the first card before the clock runs.
+	ReadTime = 10 * time.Second
+	// BuzzCooldown is how long "Proibida!" stays off after a buzz, so a table tapping at
+	// once costs one point, not one per tap.
+	BuzzCooldown = 5 * time.Second
 )
 
 // Phases of a match.
@@ -115,14 +120,21 @@ type State struct {
 	CardSeq int       `json:"card_seq"` // counts cards drawn, so a late tap can't hit the next card
 	Skips   int       `json:"skips"`
 	EndsAt  time.Time `json:"ends_at"`
-	Played  []Played  `json:"played"`   // the current (or last) turn
-	ReadyAt time.Time `json:"ready_at"` // when the current turn became ready, so bots can wait
+	// ReadUntil ends the reading time at the start of a turn; the clock (EndsAt) starts
+	// after it.
+	ReadUntil time.Time `json:"read_until"`
+	// BuzzOpenAt is when "Proibida!" works again after the last buzz.
+	BuzzOpenAt time.Time `json:"buzz_open_at"`
+	Played     []Played  `json:"played"`   // the current (or last) turn
+	ReadyAt    time.Time `json:"ready_at"` // when the current turn became ready, so bots can wait
 }
 
 // Action is what a player sends.
 type Action struct {
-	Type string `json:"type"` // start | hit | skip | buzz | time_up | finish | next
-	Seq  int    `json:"seq,omitempty"`
+	Type  string `json:"type"` // start | hit | skip | buzz | time_up | finish | next | score
+	Seq   int    `json:"seq,omitempty"`
+	Team  int    `json:"team,omitempty"`  // score: which team
+	Delta int    `json:"delta,omitempty"` // score: +1 or -1
 }
 
 // Setup splits people into teams and gets the first turn ready.
@@ -247,7 +259,9 @@ func Apply(s *State, user string, a Action, now time.Time, rng *rand.Rand) error
 			return ruleErr("Só quem narra pode começar o turno.")
 		}
 		s.Phase = PhaseTurn
-		s.EndsAt = now.Add(time.Duration(s.Seconds) * time.Second)
+		s.ReadUntil = now.Add(ReadTime)
+		s.EndsAt = s.ReadUntil.Add(time.Duration(s.Seconds) * time.Second)
+		s.BuzzOpenAt = time.Time{}
 		s.Played = nil
 		s.Skips = 0
 		s.draw(rng)
@@ -263,6 +277,10 @@ func Apply(s *State, user string, a Action, now time.Time, rng *rand.Rand) error
 			return ruleErr("Essa carta já passou.")
 		}
 		narrator := user == s.Narrator()
+		// While the narrator reads, nobody can score or buzz; a card can still be skipped.
+		if a.Type != "skip" && now.Before(s.ReadUntil) {
+			return ruleErr("Ainda é a hora de ler a carta.")
+		}
 		switch a.Type {
 		case "hit":
 			if !narrator {
@@ -283,7 +301,11 @@ func Apply(s *State, user string, a Action, now time.Time, rng *rand.Rand) error
 			if s.TeamOf(user) == s.ActiveTeam() {
 				return ruleErr("O seu time não pode apertar a campainha.")
 			}
+			if now.Before(s.BuzzOpenAt) {
+				return ruleErr("A campainha acabou de tocar. Espere uns segundos.")
+			}
 			s.Teams[s.ActiveTeam()].Score--
+			s.BuzzOpenAt = now.Add(BuzzCooldown)
 			s.record(OutcomeBuzz)
 		}
 		s.draw(rng)
@@ -320,4 +342,19 @@ func Apply(s *State, user string, a Action, now time.Time, rng *rand.Rand) error
 		return nil
 	}
 	return ruleErr("Ação desconhecida.")
+}
+
+// Adjust fixes a team's score by one point, for the host to undo a mistake.
+func Adjust(s *State, team, delta int) error {
+	if s.Phase == PhaseOver {
+		return ruleErr("A partida já acabou.")
+	}
+	if team < 0 || team >= len(s.Teams) {
+		return ruleErr("Esse time não existe.")
+	}
+	if delta != 1 && delta != -1 {
+		return ruleErr("Ajuste um ponto por vez.")
+	}
+	s.Teams[team].Score += delta
+	return nil
 }
