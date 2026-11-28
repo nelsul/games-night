@@ -562,3 +562,13 @@ func TestBigTablesNeedTwoBackdoorsInTheLastSprintsToo(t *testing.T) {
 		t.Fatalf("16 players with every role: %d hackers", len(hackers(s)))
 	}
 }
+
+func TestSquadHistoryOptionReachesEveryone(t *testing.T) {
+	s := setup(t, 5, Options{SquadHistory: true}, 1)
+	if v := ViewFor(s, s.Players[0]); !v.Options.SquadHistory {
+		t.Fatal("players should see that squad history is on")
+	}
+	if v := ViewFor(setup(t, 5, Options{}, 1), "p1"); v.Options.SquadHistory {
+		t.Fatal("squad history is off by default")
+	}
+}

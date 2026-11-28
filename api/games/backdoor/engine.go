@@ -90,6 +90,7 @@ type Options struct {
 	Deepfake     bool `json:"deepfake"`
 	Freelancer   bool `json:"freelancer"`
 	TimerSeconds int  `json:"timer_seconds"` // 0 (off), 60, 120 or 180
+	SquadHistory bool `json:"squad_history"` // show who was in each past sprint during the match
 }
 
 // RuleError is a broken rule; its message is shown to players (Portuguese).
