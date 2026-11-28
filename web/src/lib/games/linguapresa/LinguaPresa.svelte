@@ -44,6 +44,9 @@
 	const name = (id: string) => people[id]?.name ?? 'Alguém';
 	const first = (id: string) => name(id).split(' ')[0];
 	const color = (t: number) => teamColors[t % teamColors.length];
+	// Big tables (more than 4 teams, or teams of 5+) get a shorter scoreboard, so the
+	// card and the "Proibida!" button stay on screen.
+	const compact = $derived(match.teams.length > 4 || match.teams.some((t) => t.players.length > 4));
 	const teamName = (t: number) => teamNames[t % teamNames.length];
 
 	let error = $state('');
@@ -177,7 +180,7 @@
 	</header>
 
 	<!-- The scoreboard: every team, the one playing is lit up -->
-	<section class="board" class:many={match.teams.length > 4} aria-label="Placar">
+	<section class="board" class:many={match.teams.length > 4} class:compact aria-label="Placar">
 		{#each match.teams as t, i (i)}
 			<div class="team" class:active={i === match.active_team} class:mine={i === match.my_team} style="--c:{color(i)}">
 				<div class="team-top">
@@ -188,7 +191,7 @@
 				<div class="faces">
 					{#each t.players as p (p)}
 						<span class="face" class:narr={p === match.narrator && match.phase !== 'over'}>
-							<Avatar user={people[p]} size={30} />
+							<Avatar user={people[p]} size={compact ? 24 : 30} />
 						</span>
 					{/each}
 				</div>
@@ -302,7 +305,7 @@
 							? `Empate entre ${match.winners.map((w) => teamName(w)).join(' e ')}`
 							: `Time ${teamName(match.winners?.[0] ?? 0)} ganhou`}
 					</h1>
-					<ol class="rank">
+					<ol class="rank" class:tight={match.teams.length > 4}>
 						{#each ranking as t, k (t.i)}
 							<li style="--c:{color(t.i)}" class:win={match.winners?.includes(t.i)} in:fly={{ y: 14, duration: motion(260), delay: motion(120 * k) }}>
 								<span class="pos">{k + 1}</span>
@@ -432,6 +435,25 @@
 		opacity: 0.72;
 		transition: opacity 0.25s, border-color 0.25s, transform 0.25s;
 	}
+	/* Big tables: the score sits next to the team name instead of under the faces. */
+	.board.compact .team {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-areas: 'top score' 'faces faces';
+		align-items: center;
+		column-gap: 4px;
+	}
+	.board.compact .team-top {
+		grid-area: top;
+	}
+	.board.compact .faces {
+		grid-area: faces;
+		gap: 3px;
+	}
+	.board.compact .score {
+		grid-area: score;
+		font-size: 22px;
+	}
 	/* Up to 8 pairs: two rows of four, smaller and without the "seu time" tag (the
 	   ring marks it). */
 	.board.many {
@@ -459,9 +481,6 @@
 	}
 	.board.many .team.mine.active {
 		box-shadow: inset 0 0 0 1px #fff6, 0 8px 22px #0006;
-	}
-	.board.many .score {
-		font-size: 26px;
 	}
 	.team-top strong {
 		min-width: 0;
@@ -813,6 +832,20 @@
 		font-size: 26px;
 		width: 28px;
 		color: var(--c);
+	}
+	/* Many teams: shorter rows, so "Jogar de novo" is not a long scroll away. */
+	.rank.tight {
+		gap: 6px;
+	}
+	.rank.tight li {
+		padding: 7px 12px;
+	}
+	.rank.tight .pos {
+		font-size: 20px;
+		width: 22px;
+	}
+	.rank.tight b {
+		font-size: 26px;
 	}
 	.rank-team {
 		flex: 1;
