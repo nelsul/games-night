@@ -52,5 +52,6 @@ export const lapChoices = [1, 2];
 export const secondChoices = [45, 60, 90];
 
 /** Every team gets a color and a name, by position. */
-export const teamColors = ['#ff4fa3', '#ffb347', '#5fd38d', '#35d4ff', '#c58bff'];
-export const teamNames = ['Rosa', 'Dourado', 'Verde', 'Ciano', 'Roxo'];
+/** Eight, enough for 16 people in pairs. */
+export const teamColors = ['#ff4fa3', '#ffb347', '#5fd38d', '#35d4ff', '#c58bff', '#ff6b4a', '#5b7cff', '#d4f25a'];
+export const teamNames = ['Rosa', 'Dourado', 'Verde', 'Ciano', 'Roxo', 'Coral', 'Azul', 'Lima'];
