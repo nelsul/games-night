@@ -10,7 +10,7 @@
 
 <a class="card" href="/sala/{room.code}">
 	<span class="thumb">
-		{#if game}<game.Title size={30} />{:else}<span class="fallback">{room.game.name}</span>{/if}
+		{#if game}<span class="title"><game.Title size={24} /></span>{:else}<span class="fallback">{room.game.name}</span>{/if}
 		<span class="code">{room.code}</span>
 	</span>
 	<span class="bar" aria-hidden="true"><span style="width: {fill}%"></span></span>
@@ -37,6 +37,14 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+	.title {
+		display: flex;
+		justify-content: center;
+		max-width: 100%;
+		padding: 0 8px 18px;
+		text-align: center;
+		overflow: hidden;
 	}
 	.code {
 		position: absolute;

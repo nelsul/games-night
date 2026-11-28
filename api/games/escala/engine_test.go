@@ -259,3 +259,18 @@ func TestNoRepeatedThemeInAMatch(t *testing.T) {
 		_ = Apply(s, "a", Action{Type: "next"}, rng())
 	}
 }
+
+func TestMisplacedMarksTheCardsToMove(t *testing.T) {
+	s := &State{Line: []string{"a", "b", "c"}, Numbers: map[string]int{"a": 77, "b": 20, "c": 69}}
+	if got := s.Misplaced(); len(got) != 1 || !got["a"] {
+		t.Fatalf("77, 20, 69: misplaced %v, want only the 77", got)
+	}
+	s = &State{Line: []string{"a", "b", "c", "d"}, Numbers: map[string]int{"a": 10, "b": 30, "c": 20, "d": 40}}
+	if got := s.Misplaced(); len(got) != 1 {
+		t.Fatalf("10, 30, 20, 40: misplaced %v, want one card", got)
+	}
+	s = &State{Line: []string{"a", "b"}, Numbers: map[string]int{"a": 1, "b": 2}}
+	if got := s.Misplaced(); len(got) != 0 {
+		t.Fatalf("sorted line: misplaced %v", got)
+	}
+}

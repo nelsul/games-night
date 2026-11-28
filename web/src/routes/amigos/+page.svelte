@@ -96,7 +96,7 @@
 			id="search"
 			class="input"
 			type="search"
-			placeholder="Buscar pelo @"
+			placeholder="nome de usuário"
 			autocapitalize="none"
 			autocomplete="off"
 			spellcheck="false"

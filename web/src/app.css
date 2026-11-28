@@ -32,7 +32,10 @@ body {
 	font-family: var(--sans);
 	-webkit-font-smoothing: antialiased;
 	-webkit-tap-highlight-color: transparent;
+	/* clip (not hidden): hidden makes body its own scroll container, which breaks every
+	   position: sticky on the page. hidden stays as the fallback for old browsers. */
 	overflow-x: hidden;
+	overflow-x: clip;
 }
 
 a {
@@ -220,4 +223,19 @@ a.btn:active {
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.001ms !important;
 	}
+}
+
+/* A frosted strip behind the phone's status bar, so content scrolling under the clock
+   doesn't collide with it (viewport-fit=cover lets the page run under it). */
+.statusbar {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: env(safe-area-inset-top, 0px);
+	z-index: 55;
+	background: rgba(8, 8, 10, 0.55);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	pointer-events: none;
 }

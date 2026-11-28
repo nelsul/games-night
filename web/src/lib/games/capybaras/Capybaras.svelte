@@ -1125,6 +1125,7 @@
 	}
 	.big-art {
 		display: flex;
+		overflow: hidden; /* the dive's water is square: keep it inside the circle */
 		border-radius: 50%;
 		background: #fbf1dc;
 		padding: 10px;

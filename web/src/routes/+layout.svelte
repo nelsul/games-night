@@ -56,6 +56,7 @@
 	});
 </script>
 
+<div class="statusbar" aria-hidden="true"></div>
 {#if ready}
 	{@render children()}
 	{#if session.me?.onboarded && tabPaths.includes(page.url.pathname)}
