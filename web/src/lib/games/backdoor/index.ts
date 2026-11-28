@@ -21,7 +21,7 @@ export const info: GameInfo = {
 	creators: ['nelsul'],
 	tagline: 'Tem hacker no squad da Cudia',
 	tags: 'Dedução · Blefe · Vida de dev',
-	players: '5–12 jogadores',
+	players: '5–16 jogadores',
 	minutes: '~30 min',
 	synopsis:
 		'Os devs da Cudia precisam entregar o app da Samgung. O problema: tem hacker infiltrado no squad, e ninguém sabe quem é. Aprove PRs, desconfie de todo mundo e não caia na engenharia social.',

@@ -34,7 +34,8 @@ export interface MatchView {
 	phase: Phase;
 	sprint: number;
 	squad_sizes: number[];
-	double_sprint: number;
+	/** Backdoors that roll back each sprint (1 or 2). */
+	backdoors_per_sprint: number[];
 	squad_size: number;
 	leader: string;
 	failed_meetings: number;
@@ -152,7 +153,7 @@ export const timerChoices = [
 ];
 
 /** Hackers at each table size (api/games/backdoor/engine.go). */
-export const hackersFor: Record<number, number> = { 5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4, 11: 4, 12: 5 };
+export const hackersFor: Record<number, number> = { 5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4, 11: 4, 12: 5, 13: 5, 14: 6, 15: 6, 16: 7 };
 
 /** Why these options can't start with this many people, or null. Mirrors CheckStart. */
 export function optionsProblem(o: Partial<Options>, players: number): string | null {
