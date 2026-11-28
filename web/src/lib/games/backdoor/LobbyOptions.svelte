@@ -11,6 +11,7 @@
 		deepfake: false,
 		freelancer: false,
 		timer_seconds: 0,
+		squad_history: false,
 		...((room.options ?? {}) as Partial<Options>)
 	});
 	const count = $derived(room.players.length);
@@ -94,6 +95,25 @@
 				<span class="state" class:on={opts.timer_seconds > 0}
 					>{timerChoices.find((t) => t.value === opts.timer_seconds)?.label ?? 'Nenhum'}</span
 				>
+			{/if}
+		</li>
+		<li>
+			<div class="text">
+				<span class="name">Mostrar squads anteriores</span>
+				<span class="desc">Durante a partida, todo mundo vê quem estava em cada sprint e quantas backdoors apareceram. Bom para quem esquece.</span>
+			</div>
+			{#if isHost}
+				<button
+					type="button"
+					class="switch"
+					role="switch"
+					aria-checked={opts.squad_history}
+					aria-label="Mostrar squads anteriores"
+					disabled={busy}
+					onclick={() => save({ squad_history: !opts.squad_history })}
+				><span></span></button>
+			{:else}
+				<span class="state" class:on={opts.squad_history}>{opts.squad_history ? 'Ligado' : 'Desligado'}</span>
 			{/if}
 		</li>
 	</ul>

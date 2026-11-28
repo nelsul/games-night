@@ -9,6 +9,8 @@ export interface Options {
 	deepfake: boolean;
 	freelancer: boolean;
 	timer_seconds: number;
+	/** Show who was in each past sprint during the match. */
+	squad_history: boolean;
 }
 
 export interface Known {

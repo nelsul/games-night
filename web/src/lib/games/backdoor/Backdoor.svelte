@@ -309,6 +309,22 @@
 		{#if doubleLeft.length && match.phase !== 'over' && match.phase !== 'guess'}
 			<p class="muted tiny">★ {doubleLeft.length === 1 ? `Na sprint ${doubleLeft[0]}` : `Nas sprints ${doubleLeft.join(' e ')}`}, só dá rollback com 2 backdoors.</p>
 		{/if}
+		{#if match.options.squad_history && match.results.length && match.phase !== 'over'}
+			<ul class="squads" aria-label="Quem estava em cada sprint">
+				{#each match.results as r, i (i)}
+					<li class:bad={r.rollback}>
+						<span class="sq-n">S{i + 1}</span>
+						<span class="sq-who">
+							<span class="sq-faces">
+								{#each r.squad as id (id)}<Avatar user={people[id]} size={22} />{/each}
+							</span>
+							<span class="tiny muted">{r.squad.map(name).join(', ')}</span>
+						</span>
+						<span class="sq-res">{r.backdoors} {r.backdoors === 1 ? 'backdoor' : 'backdoors'}</span>
+					</li>
+				{/each}
+			</ul>
+		{/if}
 	</section>
 
 	{#if showResult && lastResult}
@@ -734,6 +750,50 @@
 		display: grid;
 		grid-template-columns: repeat(5, minmax(0, 1fr));
 		gap: 8px;
+	}
+	.squads {
+		list-style: none;
+		margin: 4px 0 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.squads li {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 6px 10px;
+		border-radius: 10px;
+		background: rgba(63, 185, 80, 0.1);
+		border-left: 3px solid #3fb950;
+	}
+	.squads li.bad {
+		background: rgba(248, 81, 73, 0.1);
+		border-left-color: #f85149;
+	}
+	.sq-n {
+		font-weight: 700;
+		font-size: 13px;
+		flex: none;
+	}
+	.sq-who {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		min-width: 0;
+		flex: 1;
+	}
+	.sq-faces {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 3px;
+	}
+	.sq-res {
+		font-size: 12px;
+		color: var(--bd-muted);
+		flex: none;
+		white-space: nowrap;
 	}
 	.track li {
 		height: 40px;
