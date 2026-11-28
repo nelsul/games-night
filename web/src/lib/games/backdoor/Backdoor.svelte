@@ -37,6 +37,8 @@
 		onplayer?: (userId: string) => void;
 	} = $props();
 
+	// From 9 people the pick lists go to two columns, so the whole table fits on a phone.
+	const bigTable = $derived(match.players.length > 8);
 	/** Sprints still ahead (1-based) that need 2 backdoors to roll back. */
 	const doubleLeft = $derived(
 		match.backdoors_per_sprint.flatMap((need, i) => (need > 1 && i >= match.sprint ? [i + 1] : []))
@@ -343,12 +345,29 @@
 
 	{#if showReview && lastProposal}
 		<section class="card event" class:bad={!lastProposal.approved} in:fly={{ y: -12, duration: ms(300) }}>
-			<strong>PR de {name(lastProposal.leader)}: {lastProposal.approved ? 'aprovado' : 'recusado'}</strong>
-			<div class="votes">
-				{#each Object.entries(lastProposal.votes) as [id, yes], i (id)}
-					<span class="vote" class:yes in:scale={{ start: 0.6, duration: ms(220), delay: ms(120 + i * 70) }}><Avatar user={people[id]} size={22} /> {name(id)}: {yes ? 'Approve' : 'Changes'}</span>
+			<strong>{lastProposal.leader === me ? 'Seu PR' : `PR de ${name(lastProposal.leader)}`}: {lastProposal.approved ? 'aprovado' : 'recusado'}</strong>
+			{#if bigTable}
+				<!-- A big table would fill the screen with one chip per vote: group them instead. -->
+				{#each [true, false] as yes (yes)}
+					{@const ids = Object.entries(lastProposal.votes).filter(([, y]) => y === yes).map(([id]) => id)}
+					{#if ids.length}
+						<div class="vote-group" class:yes>
+							<span class="vote-label">{yes ? 'Approve' : 'Changes'} · {ids.length}</span>
+							<span class="vote-faces">
+								{#each ids as id, i (id)}
+									<span title={name(id)} in:scale={{ start: 0.6, duration: ms(220), delay: ms(120 + i * 50) }}><Avatar user={people[id]} size={24} /></span>
+								{/each}
+							</span>
+						</div>
+					{/if}
 				{/each}
-			</div>
+			{:else}
+				<div class="votes">
+					{#each Object.entries(lastProposal.votes) as [id, yes], i (id)}
+						<span class="vote" class:yes in:scale={{ start: 0.6, duration: ms(220), delay: ms(120 + i * 70) }}><Avatar user={people[id]} size={22} /> {name(id)}: {yes ? 'Approve' : 'Changes'}</span>
+					{/each}
+				</div>
+			{/if}
 		</section>
 	{/if}
 
@@ -379,7 +398,7 @@
 					<strong class="hl">{leaderName}</strong> é o Scrum Master e está escolhendo {match.squad_size} pessoas.
 				{/if}
 			</p>
-			<ul class="pick" aria-label="Jogadores">
+			<ul class="pick" class:grid={bigTable} aria-label="Jogadores">
 				{#each match.players as p (p.id)}
 					{@const on = match.selection.includes(p.id)}
 					<li>
@@ -391,7 +410,7 @@
 							disabled={!match.me.is_leader || busy}
 							onclick={() => toggle(p.id)}
 						>
-							<Avatar user={people[p.id]} size={36} online={people[p.id]?.online} />
+							<Avatar user={people[p.id]} size={bigTable ? 28 : 36} online={people[p.id]?.online} />
 							<span class="pname">{name(p.id)}{#if p.is_leader}<span class="tag">Scrum Master</span>{/if}</span>
 							<span class="check" aria-hidden="true">{#if on}<Icon name="check" size={18} />{/if}</span>
 						</button>
@@ -485,11 +504,11 @@
 				aponta quem acha que é o Analista de Segurança. Se acertar, os hackers vencem.
 			</p>
 			{#if match.me.role === 'social_engineer'}
-				<ul class="pick" aria-label="Quem é o Analista?">
+				<ul class="pick" class:grid={bigTable} aria-label="Quem é o Analista?">
 					{#each match.players.filter((p) => p.id !== me) as p (p.id)}
 						<li>
 							<button type="button" class="person" class:on={guessTarget === p.id} aria-pressed={guessTarget === p.id} onclick={() => (guessTarget = p.id)}>
-								<Avatar user={people[p.id]} size={36} />
+								<Avatar user={people[p.id]} size={bigTable ? 28 : 36} />
 								<span class="pname">{name(p.id)}</span>
 								<span class="check" aria-hidden="true">{#if guessTarget === p.id}<Icon name="check" size={18} />{/if}</span>
 							</button>
@@ -844,6 +863,25 @@
 		background: #12261e;
 		color: #8bd5a0;
 	}
+	.vote-group {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.vote-label {
+		font-size: 12px;
+		font-weight: 700;
+		color: #ffa198;
+	}
+	.vote-group.yes .vote-label {
+		color: #8bd5a0;
+	}
+	.vote-faces {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		line-height: 0;
+	}
 	.phase {
 		flex: 1;
 		display: flex;
@@ -919,6 +957,37 @@
 		background: var(--bd-surface);
 		text-align: left;
 		cursor: pointer;
+	}
+	.pick.grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.pick.grid .person {
+		min-height: 48px;
+		gap: 8px;
+		padding: 6px 8px;
+		border-radius: 12px;
+	}
+	.pick.grid .pname {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0;
+		font-size: 14px;
+	}
+	.pick.grid .pname,
+	.pick.grid .tag {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		max-width: 100%;
+	}
+	.pick.grid .tag {
+		font-size: 10px;
+	}
+	.pick.grid .check {
+		width: 20px;
+		height: 20px;
+		flex: none;
 	}
 	.person:disabled {
 		cursor: default;
