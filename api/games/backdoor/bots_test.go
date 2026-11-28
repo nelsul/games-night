@@ -89,9 +89,14 @@ func slices_index(list []string, v string) int {
 }
 
 func TestBotScrumMasterTakesItsTimeOpeningCommits(t *testing.T) {
-	s := &State{Phase: PhaseReveal, PhaseStartedAt: t0}
+	s := &State{Phase: PhaseReveal, PhaseStartedAt: t0, Commits: []bool{false, true}}
+	// The first commit waits for the announcement that opens the reveal.
+	if got := botPause(s, Action{Type: "open"}, t0.Add(time.Second)); got != 5*time.Second {
+		t.Fatalf("first open after 1s waits %v", got)
+	}
+	s.Opened = 1
 	if got := botPause(s, Action{Type: "open"}, t0.Add(time.Second)); got != 1200*time.Millisecond {
-		t.Fatalf("open after 1s waits %v", got)
+		t.Fatalf("next open after 1s waits %v", got)
 	}
 	if got := botPause(s, Action{Type: "continue"}, t0.Add(5*time.Second)); got != 0 {
 		t.Fatalf("continue after 5s waits %v", got)

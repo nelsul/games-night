@@ -252,6 +252,10 @@ func botGuess(s *State, bot string, rng *rand.Rand) string {
 func botPause(s *State, a Action, now time.Time) time.Duration {
 	var gap time.Duration
 	switch {
+	case s.Phase == PhaseReveal && a.Type == "open" && s.Opened == 0:
+		// Every phone first shows "Conferindo os commits" for at least 5 s (the hub's
+		// announcements); the first commit opens once the table can see it.
+		gap = 6 * time.Second
 	case s.Phase == PhaseReveal && a.Type == "open":
 		gap = 2200 * time.Millisecond
 	case s.Phase == PhaseReveal && a.Type == "continue":

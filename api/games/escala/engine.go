@@ -272,15 +272,33 @@ func (s *State) sorted() bool {
 	return true
 }
 
-// Misplaced marks every card that is smaller than a card on its left.
+// Misplaced marks the fewest cards that would have to move for the line to be in
+// order: every card outside the longest run that is already increasing. In 77, 20, 69
+// that is the 77, not the 20 and the 69.
 func (s *State) Misplaced() map[string]bool {
+	n := len(s.Line)
+	length := make([]int, n) // longest increasing run ending at i
+	prev := make([]int, n)
+	best := -1
+	for i, p := range s.Line {
+		length[i], prev[i] = 1, -1
+		for j := 0; j < i; j++ {
+			if s.Numbers[s.Line[j]] < s.Numbers[p] && length[j]+1 > length[i] {
+				length[i], prev[i] = length[j]+1, j
+			}
+		}
+		if best < 0 || length[i] > length[best] {
+			best = i
+		}
+	}
+	keep := map[int]bool{}
+	for i := best; i >= 0; i = prev[i] {
+		keep[i] = true
+	}
 	out := map[string]bool{}
-	highest := 0
-	for _, p := range s.Line {
-		if n := s.Numbers[p]; n < highest {
+	for i, p := range s.Line {
+		if !keep[i] {
 			out[p] = true
-		} else {
-			highest = n
 		}
 	}
 	return out

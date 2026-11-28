@@ -57,7 +57,11 @@
 	>
 {/if}
 {#if online !== undefined}
-	<span class="dot" class:on={online} style="width: {Math.max(8, Math.round(size * 0.26))}px; height: {Math.max(8, Math.round(size * 0.26))}px"
+	<span
+		class="dot"
+		class:on={online}
+		class:small={size < 32}
+		style="width: {size < 32 ? 6 : Math.max(8, Math.round(size * 0.26))}px; height: {size < 32 ? 6 : Math.max(8, Math.round(size * 0.26))}px"
 		><span class="sr-only">{online ? 'online' : 'offline'}</span></span
 	>
 {/if}
@@ -77,6 +81,15 @@
 		background: #6e7681;
 		border: 2px solid #141414;
 		box-sizing: content-box;
+	}
+	/* Tiny avatars (presence strips): a smaller dot that stays inside its own avatar. */
+	.dot.small {
+		right: -1px;
+		bottom: -1px;
+		border-width: 1.5px;
+	}
+	.dot.small.on {
+		animation: none;
 	}
 	.dot.on {
 		background: #3fb950;

@@ -38,6 +38,15 @@
 	const notReady = $derived(room && game?.whyNotStart ? game.whyNotStart(room) : null);
 	const onlineCount = $derived(room ? room.players.filter((p) => p.online).length : 0);
 
+	// Switching between the lobby and a match swaps the whole screen: start the new one
+	// from the top (the lobby's start button sits at the bottom of a long page).
+	let inMatch: boolean | null = null;
+	$effect(() => {
+		const now = !!match;
+		if (inMatch !== null && now !== inMatch) window.scrollTo({ top: 0 });
+		inMatch = now;
+	});
+
 	// A chime when someone (or a bot) arrives in the lobby.
 	let seenPlayers = -1;
 	$effect(() => {

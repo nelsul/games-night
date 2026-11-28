@@ -269,6 +269,20 @@
 		scroll-snap-align: start;
 		scroll-snap-stop: always;
 		background: #1b0b0e;
+		/* Slides share the tallest one's height; the art grows to fill it, so a game
+		   with a one-line title doesn't leave a blank band at the bottom. */
+		display: flex;
+		flex-direction: column;
+	}
+	.slide .art {
+		flex: 1 0 auto;
+		min-height: 290px; /* the key art's own height */
+		position: relative;
+	}
+	.slide .art > :global(svg) {
+		position: absolute;
+		inset: 0;
+		height: 100%;
 	}
 	.dots {
 		display: flex;

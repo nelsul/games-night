@@ -1028,7 +1028,8 @@
 	}
 	.bigcard {
 		position: relative;
-		width: min(64vw, 240px);
+		/* Small enough that the clue box shows below it on a phone (iPhone 11 included). */
+		width: min(52vw, 200px, 26svh);
 		aspect-ratio: 5 / 7;
 		perspective: 1000px;
 		border: 0;
