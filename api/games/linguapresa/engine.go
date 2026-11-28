@@ -12,7 +12,7 @@ import (
 
 const (
 	MinPlayers = 4
-	MaxPlayers = 10
+	MaxPlayers = 16
 	// MaxSkips is how many cards the narrator may skip in one turn.
 	MaxSkips       = 3
 	DefaultSeconds = 60
@@ -128,7 +128,7 @@ type Action struct {
 // Setup splits people into teams and gets the first turn ready.
 func Setup(players []string, o Options, rng *rand.Rand, now time.Time) (*State, error) {
 	if len(players) < MinPlayers || len(players) > MaxPlayers {
-		return nil, ruleErr("Língua Presa é para 4 a 10 pessoas.")
+		return nil, ruleErr("Língua Presa é para 4 a 16 pessoas.")
 	}
 	if err := o.CheckLobby(); err != nil {
 		return nil, err
@@ -145,7 +145,7 @@ func Setup(players []string, o Options, rng *rand.Rand, now time.Time) (*State, 
 		teamCount = n / 2
 	case "trios":
 		if n%3 != 0 || n < 6 {
-			return nil, ruleErr("Trios precisam de 6 ou 9 pessoas.")
+			return nil, ruleErr("Trios precisam de 6, 9, 12 ou 15 pessoas.")
 		}
 		teamCount = n / 3
 	}

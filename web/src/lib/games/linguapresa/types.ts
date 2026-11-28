@@ -46,7 +46,7 @@ export interface Options {
 export const modeChoices: { id: Options['mode']; label: string; hint: string }[] = [
 	{ id: 'two', label: 'Dois times', hint: 'Qualquer número de pessoas, de 4 a 10' },
 	{ id: 'pairs', label: 'Duplas', hint: 'Número par de pessoas: 4, 6, 8 ou 10' },
-	{ id: 'trios', label: 'Trios', hint: '6 ou 9 pessoas' }
+	{ id: 'trios', label: 'Trios', hint: '6, 9, 12 ou 15 pessoas' }
 ];
 export const lapChoices = [1, 2];
 export const secondChoices = [45, 60, 90];
