@@ -177,7 +177,7 @@
 	</header>
 
 	<!-- The scoreboard: every team, the one playing is lit up -->
-	<section class="board" aria-label="Placar">
+	<section class="board" class:many={match.teams.length > 4} aria-label="Placar">
 		{#each match.teams as t, i (i)}
 			<div class="team" class:active={i === match.active_team} class:mine={i === match.my_team} style="--c:{color(i)}">
 				<div class="team-top">
@@ -431,6 +431,43 @@
 		gap: 6px;
 		opacity: 0.72;
 		transition: opacity 0.25s, border-color 0.25s, transform 0.25s;
+	}
+	/* Up to 8 pairs: two rows of four, smaller and without the "seu time" tag (the
+	   ring marks it). */
+	.board.many {
+		grid-auto-flow: row;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 6px;
+	}
+	.board.many .team {
+		padding: 8px 6px;
+		gap: 4px;
+	}
+	.board.many .team-top {
+		font-size: 12px;
+		gap: 4px;
+	}
+	.board.many .dot {
+		width: 7px;
+		height: 7px;
+	}
+	.board.many .you {
+		display: none;
+	}
+	.board.many .team.mine {
+		box-shadow: inset 0 0 0 1px #fff6;
+	}
+	.board.many .team.mine.active {
+		box-shadow: inset 0 0 0 1px #fff6, 0 8px 22px #0006;
+	}
+	.board.many .score {
+		font-size: 26px;
+	}
+	.team-top strong {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 	.team.active {
 		opacity: 1;
