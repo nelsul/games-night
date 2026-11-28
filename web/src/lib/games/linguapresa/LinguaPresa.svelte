@@ -276,7 +276,7 @@
 				{#if match.card}
 					{#key match.card_seq}
 						<section class="card" in:fly={{ x: 60, duration: motion(260), easing: cubicOut }} aria-label="Carta">
-							<span class="card-word">{match.card.word}</span>
+							<span class="card-word" class:long={match.card.word.split(' ').some((w) => w.length > 10)}>{match.card.word}</span>
 							<ul class="taboo" aria-label="Palavras proibidas">
 								{#each match.card.taboo as w (w)}
 									<li>{w}</li>
@@ -665,6 +665,10 @@
 		overflow: hidden;
 		box-shadow: 0 14px 34px #0008;
 		border: 3px solid #ff4fa3;
+	}
+	/* A long word ("Reconhecimento facial") gets a smaller size, so it never runs off the card. */
+	.card-word.long {
+		font-size: clamp(30px, 9.5vw, 44px);
 	}
 	.card-word {
 		display: block;
