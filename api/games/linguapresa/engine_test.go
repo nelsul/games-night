@@ -46,6 +46,11 @@ func TestCards(t *testing.T) {
 			t.Errorf("duplicate card %q", c.Word)
 		}
 		seen[c.Word] = true
+		for _, w := range c.Taboo {
+			if strings.Contains(strings.ToLower(w), strings.ToLower(c.Word)) {
+				t.Errorf("%q: forbidden word %q gives the card away", c.Word, w)
+			}
+		}
 		if len(c.Taboo) != 5 {
 			t.Errorf("%q needs exactly 5 forbidden words, has %d", c.Word, len(c.Taboo))
 		}
