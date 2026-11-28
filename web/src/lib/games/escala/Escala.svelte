@@ -65,14 +65,33 @@
 	let seen: Record<string, string> = {};
 	let seenKey = '';
 	let firstRun = true;
+	// Notes wait here for a free lane, so a big table writing at once never stacks two
+	// notes on the same lane. Only the latest few wait; older ones are dropped.
+	const LANES = [0, 1, 2];
+	const MAX_QUEUED = 6;
+	let queued: Note[] = [];
 	function dropNote(id: number) {
 		notes = notes.filter((o) => o.id !== id);
+		placeNotes();
+	}
+	function placeNotes() {
+		untrack(() => {
+			while (queued.length) {
+				const lane = LANES.find((l) => !notes.some((o) => o.lane === l));
+				if (lane === undefined) return;
+				const n = { ...queued.shift()!, lane };
+				notes = [...notes, n];
+				// Safety net in case the animation never reports that it ended.
+				setTimeout(() => dropNote(n.id), reducedMotion ? NOTE_MS : NOTE_MS + 1500);
+			}
+		});
 	}
 	$effect(() => {
 		const key = match.round + ':' + match.swap_seq;
 		if (key !== seenKey) {
 			seen = {};
 			notes = [];
+			queued = [];
 			seenKey = key;
 		}
 		const fresh: Note[] = [];
@@ -84,15 +103,17 @@
 			seen[p.id] = text;
 		}
 		firstRun = false;
-		for (const n of fresh) {
-			const current = untrack(() => notes).filter((o) => o.who !== n.who);
-			n.lane = [0, 1, 2].find((l) => !current.some((o) => o.lane === l)) ?? n.id % 3;
-			notes = [...current, n].slice(-3);
-			// Safety net in case the animation never reports that it ended.
-			setTimeout(() => dropNote(n.id), reducedMotion ? NOTE_MS : NOTE_MS + 1500);
+		if (fresh.length) {
+			const who = new Set(fresh.map((n) => n.who));
+			// A new clue replaces that person's note, on screen or queued.
+			notes = untrack(() => notes).filter((o) => !who.has(o.who));
+			queued = [...queued.filter((o) => !who.has(o.who)), ...fresh].slice(-MAX_QUEUED);
+			placeNotes();
 		}
 	});
 
+	// Big tables get a tighter line, so 16 cards and their slots don't run on forever.
+	const dense = $derived(match.players.length > 8);
 	const myPlayer = $derived(player(me));
 	const myPos = $derived(match.line.findIndex((c) => c.player === me));
 	const waiting = $derived(match.players.filter((p) => !p.placed));
@@ -487,7 +508,7 @@
 				</div>
 
 				<div class="rail-end low"><span>▲</span> menor · {match.theme.low}</div>
-				<ol class="line">
+				<ol class="line" class:dense>
 					{#each match.line as c, i (c.player)}
 						{@const open = match.phase === 'reveal' && i < shown}
 						{@const isMe = c.player === me}
@@ -506,7 +527,7 @@
 							>
 								<span class="rank" aria-label="Posição {i + 1}">{i + 1}</span>
 								<button class="who" onclick={() => onplayer?.(c.player)} aria-label="Ver {name(c.player)}">
-									<Avatar user={people[c.player]} size={48} />
+									<Avatar user={people[c.player]} size={dense ? 36 : 48} />
 								</button>
 								<span class="txt">
 									<span class="pname">{name(c.player)}{isMe ? ' (você)' : ''}</span>
@@ -583,7 +604,7 @@
 									{swap ? 'Terminem a votação' : 'Revelar os números'}
 								</button>
 							{:else}
-								<p class="small center">Faltam {waiting.length} {waiting.length === 1 ? 'pessoa colocar' : 'pessoas colocarem'} a carta.</p>
+								<p class="small center">{waiting.length === 1 ? 'Falta 1 pessoa colocar' : `Faltam ${waiting.length} pessoas colocarem`} a carta.</p>
 							{/if}
 						{/if}
 					{:else if allShown}
@@ -1299,6 +1320,44 @@
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
+	}
+	.line.dense,
+	.line.dense .item {
+		gap: 6px;
+	}
+	.line.dense .slot {
+		min-height: 34px;
+		border-radius: 10px;
+		font-size: 14px;
+	}
+	.line.dense .plus {
+		font-size: 18px;
+	}
+	.line.dense .lcard {
+		min-height: 62px;
+		gap: 10px;
+		padding: 8px 10px 8px 14px;
+		border-radius: 14px;
+	}
+	.line.dense .rank {
+		font-size: 22px;
+	}
+	.line.dense .who {
+		min-width: 36px;
+		min-height: 36px;
+	}
+	.line.dense .clue {
+		font-size: 16px;
+	}
+	.line.dense .tiny {
+		width: 40px;
+		height: 56px;
+	}
+	.line.dense .tn {
+		font-size: 24px;
+	}
+	.line.dense .q {
+		font-size: 22px;
 	}
 	.slot {
 		width: 100%;
