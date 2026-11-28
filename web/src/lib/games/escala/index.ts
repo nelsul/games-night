@@ -13,7 +13,7 @@ export const info: GameInfo = {
 	creators: ['EmmusSouza'],
 	tagline: 'Todo mundo no mesmo time, cada um com um número',
 	tags: 'Cooperativo · Dicas · Conversa',
-	players: '3–10 jogadores',
+	players: '3–16 jogadores',
 	minutes: '~15 min',
 	synopsis:
 		'Cada pessoa recebe um número secreto de 1 a 100 e um tema. Vocês precisam se ordenar do menor para o maior sem dizer o número, só com uma dica criativa. Dá para confiar na dica do amigo?',

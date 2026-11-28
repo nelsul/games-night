@@ -13,7 +13,10 @@ func rng() *rand.Rand { return rand.New(rand.NewPCG(1, 2)) }
 
 func newMatch(t *testing.T, n, rounds int) *State {
 	t.Helper()
-	ps := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"}[:n]
+	ps := make([]string, n)
+	for i := range ps {
+		ps[i] = string(rune('a' + i))
+	}
 	s, err := Setup(ps, Options{Rounds: rounds}, rng(), time.Now())
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +50,7 @@ func placeSorted(t *testing.T, s *State, reverse bool) {
 }
 
 func TestSetupDealsUniqueNumbers(t *testing.T) {
-	s := newMatch(t, 10, 0)
+	s := newMatch(t, MaxPlayers, 0)
 	seen := map[int]bool{}
 	for _, n := range s.Numbers {
 		if n < 1 || n > 100 || seen[n] {
@@ -63,6 +66,16 @@ func TestSetupDealsUniqueNumbers(t *testing.T) {
 func TestLimits(t *testing.T) {
 	if _, err := Setup([]string{"a", "b"}, Options{}, rng(), time.Now()); err == nil {
 		t.Fatal("2 players should be refused")
+	}
+	many := make([]string, MaxPlayers+1)
+	for i := range many {
+		many[i] = string(rune('a' + i))
+	}
+	if _, err := Setup(many[:MaxPlayers], Options{}, rng(), time.Now()); err != nil {
+		t.Fatalf("%d players should be accepted: %v", MaxPlayers, err)
+	}
+	if _, err := Setup(many, Options{}, rng(), time.Now()); err == nil {
+		t.Fatalf("%d players should be refused", MaxPlayers+1)
 	}
 	if err := (Options{Rounds: 4}).CheckLobby(); err == nil {
 		t.Fatal("4 rounds should be refused")
