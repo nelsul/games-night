@@ -14,7 +14,7 @@ import (
 
 const (
 	MinPlayers    = 3
-	MaxPlayers    = 10
+	MaxPlayers    = 16
 	MaxClueRune   = 30
 	DefaultRounds = 3
 	// MaxSwapProposals is how many times per round the table may ask to change the theme.
@@ -98,7 +98,7 @@ type Action struct {
 // Setup deals the first round.
 func Setup(players []string, o Options, rng *rand.Rand, _ time.Time) (*State, error) {
 	if len(players) < MinPlayers || len(players) > MaxPlayers {
-		return nil, ruleErr("Escala é para 3 a 10 pessoas.")
+		return nil, ruleErr("Escala é para 3 a 16 pessoas.")
 	}
 	if err := o.CheckLobby(); err != nil {
 		return nil, err
