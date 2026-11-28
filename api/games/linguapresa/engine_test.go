@@ -74,7 +74,10 @@ func TestTeams(t *testing.T) {
 		{9, Options{Mode: "trios"}, 3, false},
 		{8, Options{Mode: "trios"}, 0, true},
 		{3, Options{}, 0, true},
-		{11, Options{}, 0, true},
+		{16, Options{}, 2, false},
+		{16, Options{Mode: "pairs"}, 8, false},
+		{15, Options{Mode: "trios"}, 5, false},
+		{17, Options{}, 0, true},
 	}
 	for _, c := range cases {
 		s, err := Setup(ids(c.n), c.o, rng(), t0)

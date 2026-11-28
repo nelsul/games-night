@@ -16,7 +16,7 @@ export const info: GameInfo = {
 	creators: ['EmmusSouza'],
 	tagline: 'Faça o seu time falar a palavra sem dizer as proibidas',
 	tags: 'Times · Palavras · Conversa',
-	players: '4–10 jogadores',
+	players: '4–16 jogadores',
 	minutes: '~20 min',
 	synopsis:
 		'Em duplas, trios ou dois times, uma pessoa por vez dá dicas em voz alta para o time descobrir uma palavra. O problema: cada carta tem cinco palavras proibidas, e o time rival está de olho, pronto para apertar a campainha.',
@@ -61,7 +61,7 @@ const game: GameModule = {
 		const n = room.players.length;
 		const mode = ((room.options ?? {}) as { mode?: string }).mode ?? 'two';
 		if (mode === 'pairs' && n % 2 !== 0) return 'Duplas precisam de um número par de pessoas.';
-		if (mode === 'trios' && (n % 3 !== 0 || n < 6)) return 'Trios precisam de 6 ou 9 pessoas.';
+		if (mode === 'trios' && (n % 3 !== 0 || n < 6)) return 'Trios precisam de 6, 9, 12 ou 15 pessoas.';
 		return null;
 	},
 	screenshots: [
