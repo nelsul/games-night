@@ -47,6 +47,17 @@
 	};
 	const cardName = (kind?: string) => (kind ? (cardInfo[kind]?.name ?? kind) : 'uma carta');
 
+	// With a full table the seats run off the side: keep whoever is playing in view.
+	let seatsEl = $state<HTMLUListElement>();
+	$effect(() => {
+		void match.turn;
+		const el = seatsEl?.querySelector<HTMLElement>('li.turn');
+		if (!seatsEl || !el) return;
+		const box = seatsEl.getBoundingClientRect();
+		const seat = el.getBoundingClientRect();
+		const left = seatsEl.scrollLeft + seat.left - box.left - (box.width - seat.width) / 2;
+		seatsEl.scrollTo({ left, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+	});
 	const myTurn = $derived(match.turn === me && match.phase === 'play' && !match.pending && !match.me.out);
 	const alive = $derived(match.players.filter((p) => !p.out));
 
@@ -369,7 +380,7 @@
 		</span>
 	</header>
 
-	<ul class="seats" aria-label="Capivaras na mesa">
+	<ul class="seats" aria-label="Capivaras na mesa" bind:this={seatsEl}>
 		{#each match.players as p (p.id)}
 			<li class:turn={p.id === match.turn && match.phase !== 'over'} class:out={p.out}>
 				<button onclick={() => onplayer?.(p.id)} aria-label="{name(p.id)}: {p.out ? 'fora' : `${p.cards} cartas`}">
